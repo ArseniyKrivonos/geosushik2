@@ -1,0 +1,1758 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ГеоСыщик</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700;900&family=Manrope:wght@300;400;500;600&display=swap');
+:root{
+  --bg:#060609;--surface:#111118;--panel:#18181f;
+  --accent:#e8ff00;--accent2:#00d4ff;--accent3:#ff6b6b;
+  --text:#f0f0f0;--muted:#555570;--border:#22222e;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--text);
+  height:100%;width:100%;overflow:hidden;user-select:none;position:fixed;}
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.screen.hidden{display:none!important;}
+
+/* ══════════════════════════════════════════════════════ START */
+#startScreen{background:#060609;overflow:hidden;}
+#startBg{position:absolute;inset:0;width:100%;height:100%;}
+
+/* Content sits in lower 55% so globe is visible above */
+.start-content{
+  position:absolute;
+  bottom:0; left:0; right:0;
+  z-index:5;
+  display:flex;flex-direction:column;align-items:center;
+  padding:1rem 1.2rem 1rem;
+  background:linear-gradient(to bottom, transparent 0%, rgba(6,6,9,0.92) 18%, rgba(6,6,9,0.97) 100%);
+  max-height:62vh;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+}
+
+/* Logo floats in the UPPER half, above content */
+.logo-wrap{
+  position:absolute;
+  top:4vh; left:0; right:0;
+  z-index:6;
+  text-align:center;
+  pointer-events:none;
+}
+.logo{
+  font-family:'Unbounded',sans-serif;
+  font-size:clamp(2.2rem,9vw,4.8rem);
+  font-weight:900;letter-spacing:-0.04em;line-height:1;
+  display:inline-block;
+  white-space:nowrap;
+  animation:logo-float 3.5s ease-in-out infinite;
+}
+.logo em{color:var(--accent);font-style:normal;
+  text-shadow:0 0 40px rgba(232,255,0,0.7);}
+.logo .dot{color:var(--accent2);}
+.logo-shadow{
+  font-family:'Unbounded',sans-serif;
+  font-size:clamp(2.2rem,9vw,4.8rem);
+  font-weight:900;letter-spacing:-0.04em;line-height:1;
+  display:inline-block;white-space:nowrap;
+  position:absolute;top:0;left:0;right:0;
+  color:transparent;
+  -webkit-text-stroke:1px rgba(232,255,0,0.2);
+  filter:blur(18px);
+  animation:logo-float 3.5s ease-in-out infinite;
+  pointer-events:none;
+}
+@keyframes logo-float{
+  0%,100%{transform:translateY(0) scale(1);}
+  50%{transform:translateY(-7px) scale(1.01);}
+}
+
+.tagline{
+  color:var(--muted);font-size:clamp(0.55rem,2.2vw,0.72rem);
+  letter-spacing:0.22em;text-transform:uppercase;
+  margin-bottom:1rem;text-align:center;
+}
+
+/* mode tabs */
+.mode-tabs{display:flex;gap:0.4rem;margin-bottom:0.85rem;width:100%;max-width:300px;}
+.mode-tab{
+  flex:1;padding:0.55rem 0.4rem;
+  font-family:'Unbounded',sans-serif;font-size:0.5rem;font-weight:700;
+  letter-spacing:0.08em;text-transform:uppercase;
+  background:var(--surface);border:1px solid var(--border);
+  color:var(--muted);cursor:pointer;transition:all 0.18s;touch-action:manipulation;
+  display:flex;flex-direction:column;align-items:center;gap:0.25rem;
+}
+.mode-tab.active{border-color:var(--accent);color:var(--accent);background:rgba(232,255,0,0.06);}
+.mode-tab-icon{font-size:1rem;}
+.mode-tab:active{transform:scale(0.96);}
+
+/* co-op box */
+.coop-box{
+  width:100%;max-width:300px;
+  background:var(--surface);border:1px solid var(--border);
+  padding:0.75rem 0.85rem;margin-bottom:0.85rem;
+  display:none;flex-direction:column;gap:0.5rem;
+}
+.coop-box.show{display:flex;}
+.coop-label{font-family:'Unbounded',sans-serif;font-size:0.45rem;letter-spacing:0.2em;color:var(--muted);text-transform:uppercase;}
+.coop-row{display:flex;gap:0.4rem;}
+.coop-input{
+  flex:1;background:var(--bg);border:1px solid var(--border);
+  color:var(--text);font-family:'Unbounded',sans-serif;font-size:0.8rem;
+  font-weight:700;letter-spacing:0.15em;padding:0.45rem 0.65rem;
+  text-transform:uppercase;outline:none;-webkit-appearance:none;
+  min-width:0;
+}
+.coop-input:focus{border-color:var(--accent2);}
+.coop-input::placeholder{color:var(--muted);font-size:0.6rem;letter-spacing:0.08em;}
+.coop-gen{
+  background:var(--accent2);color:#000;border:none;
+  font-family:'Unbounded',sans-serif;font-size:0.5rem;font-weight:700;
+  padding:0.45rem 0.65rem;cursor:pointer;letter-spacing:0.06em;text-transform:uppercase;
+  touch-action:manipulation;white-space:nowrap;flex-shrink:0;
+}
+.coop-gen:active{filter:brightness(0.85);}
+.coop-hint{font-size:0.6rem;color:var(--muted);line-height:1.4;}
+
+.btn-primary{
+  font-family:'Unbounded',sans-serif;
+  font-size:clamp(0.68rem,2.2vw,0.85rem);font-weight:700;
+  letter-spacing:0.1em;text-transform:uppercase;
+  background:var(--accent);color:#000;border:none;
+  padding:0.9rem 2.2rem;cursor:pointer;
+  clip-path:polygon(8px 0%,100% 0%,calc(100% - 8px) 100%,0% 100%);
+  transition:all 0.2s;touch-action:manipulation;
+  box-shadow:0 0 30px rgba(232,255,0,0.3),0 4px 20px rgba(0,0,0,0.5);
+}
+.btn-primary:hover{box-shadow:0 0 55px rgba(232,255,0,0.5);}
+.btn-primary:active{transform:scale(0.97);}
+.start-sub{margin-top:0.55rem;color:var(--muted);font-size:0.6rem;text-align:center;}
+
+/* daily stats */
+.daily-stats{
+  margin-top:0.85rem;border:1px solid var(--border);
+  background:var(--surface);padding:0.75rem 0.85rem;
+  width:100%;max-width:320px;
+}
+.daily-stats-title{
+  font-family:'Unbounded',sans-serif;font-size:0.48rem;
+  letter-spacing:0.22em;color:var(--muted);text-transform:uppercase;margin-bottom:0.6rem;
+}
+.daily-stats-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.5rem;}
+.ds-item{text-align:center;}
+.ds-val{font-family:'Unbounded',sans-serif;font-size:clamp(1rem,4vw,1.4rem);font-weight:900;color:var(--accent);line-height:1;}
+.ds-lbl{font-size:0.52rem;color:var(--muted);margin-top:0.2rem;}
+.ds-item.best .ds-val{color:var(--accent2);}
+.day-history-wrap{margin-top:0.65rem;}
+.day-history{display:flex;gap:3px;align-items:flex-end;height:36px;position:relative;}
+.day-bar{flex:1;background:rgba(255,255,255,0.07);border-radius:1px;
+  position:relative;min-height:3px;cursor:pointer;transition:background 0.2s,transform 0.15s;}
+.day-bar:hover{transform:scaleY(1.1);transform-origin:bottom;}
+.day-bar.today{background:var(--accent)!important;}
+.day-bar.has-score{background:var(--accent2);opacity:0.6;}
+.day-bar.has-score:hover{opacity:1;}
+.bar-tooltip{
+  position:absolute;bottom:calc(100% + 5px);left:50%;transform:translateX(-50%);
+  background:var(--panel);border:1px solid var(--border);
+  font-family:'Unbounded',sans-serif;font-size:0.48rem;font-weight:700;
+  color:var(--accent);white-space:nowrap;padding:0.2rem 0.4rem;
+  pointer-events:none;opacity:0;transition:opacity 0.15s;z-index:20;
+}
+.day-bar:hover .bar-tooltip{opacity:1;}
+.particle{position:absolute;border-radius:50%;pointer-events:none;animation:particle-float linear infinite;}
+@keyframes particle-float{
+  0%{transform:translateY(0) rotate(0deg);opacity:0;}10%{opacity:1;}90%{opacity:0.4;}
+  100%{transform:translateY(-100vh) rotate(360deg);opacity:0;}
+}
+
+/* world mode hint */
+.world-hint{
+  font-size:0.6rem;color:var(--accent2);text-align:center;
+  margin-bottom:0.65rem;opacity:0.8;
+  display:none;
+}
+.world-hint.show{display:block;}
+
+/* Mapillary viewer container */
+#mapillaryContainer{
+  position:absolute;inset:0;background:#000;
+  display:none;
+}
+#mapillaryContainer.show{display:block;}
+#mapillaryViewer{width:100%;height:100%;}
+.mly-loading{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:0.8rem;
+  background:#03030a;z-index:2;
+}
+.mly-loading.hidden{display:none!important;}
+.mly-spinner{
+  width:40px;height:40px;
+  border:3px solid var(--border);
+  border-top-color:var(--accent2);
+  border-radius:50%;
+  animation:spin 0.8s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
+.mly-loading-text{
+  font-family:'Unbounded',sans-serif;font-size:0.55rem;
+  letter-spacing:0.2em;color:var(--muted);text-transform:uppercase;
+}
+/* world-mode badge on panorama */
+.world-badge{
+  position:absolute;top:56px;left:50%;transform:translateX(-50%);
+  background:rgba(0,212,255,0.15);border:1px solid rgba(0,212,255,0.4);
+  font-family:'Unbounded',sans-serif;font-size:0.45rem;letter-spacing:0.15em;
+  color:var(--accent2);padding:0.2rem 0.7rem;white-space:nowrap;z-index:15;
+  pointer-events:none;display:none;
+}
+.world-badge.show{display:block;}
+#gameScreen{padding:0;}
+#timerBar{position:absolute;top:0;left:0;height:3px;background:var(--accent2);z-index:11;
+  box-shadow:0 0 10px var(--accent2);transition:width 1s linear;}
+#panoramaContainer{position:absolute;inset:0;background:#111;}
+#panoramaMap{width:100%;height:100%;}
+#hud{
+  position:absolute;top:0;left:0;right:0;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0.7rem 1rem;
+  background:linear-gradient(to bottom,rgba(6,6,9,0.96),transparent);
+  pointer-events:none;z-index:10;
+}
+.hud-label{font-family:'Unbounded',sans-serif;font-size:0.48rem;font-weight:700;letter-spacing:0.15em;color:var(--muted);text-transform:uppercase;}
+.hud-value{font-family:'Unbounded',sans-serif;font-size:1.1rem;font-weight:900;color:var(--accent);line-height:1;}
+.round-indicator{display:flex;gap:5px;align-items:center;}
+.round-pip{width:20px;height:3px;background:var(--border);transition:background 0.3s;}
+.round-pip.done{background:var(--accent);}
+.round-pip.active{background:var(--accent2);}
+.coop-badge{
+  position:absolute;bottom:-22px;left:50%;transform:translateX(-50%);
+  background:rgba(0,212,255,0.15);border:1px solid rgba(0,212,255,0.3);
+  font-family:'Unbounded',sans-serif;font-size:0.42rem;letter-spacing:0.12em;
+  color:var(--accent2);padding:0.18rem 0.5rem;white-space:nowrap;pointer-events:none;
+}
+
+/* ── GUESS PANEL: small corner widget that expands to near-fullscreen ── */
+#guessPanel{
+  position:absolute;bottom:1rem;right:1rem;
+  width:min(230px,44vw);
+  z-index:20;
+  transition:all 0.4s cubic-bezier(0.4,0,0.2,1);
+  overflow:hidden;
+  box-shadow:0 8px 40px rgba(0,0,0,0.8);
+  border-radius:1px;
+}
+/* EXPANDED — very large, nearly full screen */
+#guessPanel.fullscreen{
+  position:fixed;
+  top:50%; left:50%;
+  transform:translate(-50%,-50%);
+  width:min(98vw,720px);
+  height:min(92vh,700px);
+  bottom:auto; right:auto;
+  box-shadow:0 0 0 9999px rgba(0,0,0,0.75),0 24px 80px rgba(0,0,0,0.95);
+  display:flex;flex-direction:column;
+  border-radius:2px;
+}
+#guessPanel.fullscreen #guessMapContainer{flex:1;height:auto;}
+#guessPanel.fullscreen .guess-hint{display:block;}
+#guessPanelHeader{
+  background:var(--panel);border:1px solid var(--border);border-bottom:none;
+  padding:0.6rem 0.8rem;
+  display:flex;align-items:center;justify-content:space-between;
+  cursor:pointer;touch-action:manipulation;flex-shrink:0;
+}
+.panel-title{font-family:'Unbounded',sans-serif;font-size:0.56rem;font-weight:700;letter-spacing:0.1em;color:var(--accent2);text-transform:uppercase;}
+.toggle-icon{color:var(--muted);font-size:0.75rem;transition:transform 0.3s;}
+#guessPanel.fullscreen .toggle-icon{transform:rotate(45deg);color:var(--accent);}
+#guessMapContainer{width:100%;height:185px;background:var(--surface);border:1px solid var(--border);border-bottom:none;overflow:hidden;}
+#guessMap{width:100%;height:100%;}
+#guessBtn{
+  width:100%;font-family:'Unbounded',sans-serif;font-size:0.7rem;font-weight:700;
+  letter-spacing:0.08em;text-transform:uppercase;
+  background:var(--accent);color:#000;border:none;padding:0.8rem;
+  cursor:pointer;transition:all 0.15s;touch-action:manipulation;flex-shrink:0;
+}
+#guessBtn:disabled{background:var(--border);color:var(--muted);cursor:default;}
+#guessBtn:not(:disabled):active{background:#fff;transform:scale(0.99);}
+.guess-hint{font-size:0.56rem;color:var(--muted);text-align:center;
+  padding:0.28rem;background:var(--surface);border:1px solid var(--border);border-top:none;flex-shrink:0;display:none;}
+
+/* ══════════════════════════════════════════════════════ RESULT */
+#resultScreen{background:var(--bg);position:absolute;inset:0;z-index:30;flex-direction:column;}
+#resultMap{width:100%;flex:1;min-height:0;}
+.result-panel{
+  width:100%;background:var(--panel);border-top:1px solid var(--border);
+  padding:0.85rem 1.1rem;display:flex;flex-direction:column;gap:0.5rem;
+  max-height:46vh;overflow-y:auto;
+}
+.result-row{display:flex;align-items:baseline;justify-content:space-between;}
+.result-round-label{font-family:'Unbounded',sans-serif;font-size:0.55rem;font-weight:700;letter-spacing:0.2em;color:var(--accent2);text-transform:uppercase;}
+.result-score{font-family:'Unbounded',sans-serif;font-size:2.4rem;font-weight:900;color:var(--accent);line-height:1;}
+.result-score-label{font-size:0.68rem;color:var(--muted);}
+.result-distance{font-size:0.85rem;font-weight:500;}
+.result-distance span{color:var(--accent2);font-weight:700;}
+.result-divider{height:1px;background:var(--border);}
+.rounds-row{display:flex;gap:0.4rem;flex-wrap:wrap;}
+.rnd-chip{background:var(--surface);border:1px solid var(--border);padding:0.28rem 0.55rem;font-family:'Unbounded',sans-serif;font-size:0.6rem;}
+.rnd-chip.cur{border-color:var(--accent);color:var(--accent);}
+.score-bar{height:4px;background:var(--border);}
+.score-bar-fill{height:100%;background:linear-gradient(90deg,var(--accent2),var(--accent));transition:width 0.8s cubic-bezier(0.4,0,0.2,1);}
+.btn-next{
+  font-family:'Unbounded',sans-serif;font-size:0.7rem;font-weight:700;
+  letter-spacing:0.1em;text-transform:uppercase;
+  background:transparent;color:var(--accent);border:1px solid var(--accent);
+  padding:0.75rem 1.4rem;cursor:pointer;transition:all 0.15s;touch-action:manipulation;
+}
+.btn-next:active{background:var(--accent);color:#000;}
+
+/* ══════════════════════════════════════════════════════ FINAL */
+#finalScreen{background:radial-gradient(ellipse at 50% 35%,#0d1a00 0%,var(--bg) 70%);overflow-y:auto;display:flex;align-items:center;justify-content:center;}
+.final-inner{position:relative;padding:1.8rem 1.4rem;text-align:center;width:100%;max-width:440px;}
+.final-title{font-family:'Unbounded',sans-serif;font-size:0.6rem;font-weight:700;letter-spacing:0.3em;color:var(--muted);text-transform:uppercase;margin-bottom:0.65rem;}
+.final-score{font-family:'Unbounded',sans-serif;font-size:clamp(2.8rem,13vw,5.5rem);font-weight:900;color:var(--accent);line-height:1;text-shadow:0 0 60px rgba(232,255,0,0.4);}
+.final-score-max{font-family:'Unbounded',sans-serif;font-size:0.78rem;color:var(--muted);margin-bottom:0.35rem;}
+.final-grade{font-size:0.95rem;font-weight:500;color:var(--accent2);margin-bottom:1.2rem;}
+.final-breakdown{display:flex;gap:0.4rem;margin-bottom:0.9rem;flex-wrap:wrap;justify-content:center;}
+.breakdown-item{background:var(--panel);border:1px solid var(--border);padding:0.65rem;text-align:center;min-width:50px;}
+.breakdown-round{font-family:'Unbounded',sans-serif;font-size:0.45rem;letter-spacing:0.15em;color:var(--muted);text-transform:uppercase;margin-bottom:0.25rem;}
+.breakdown-score{font-family:'Unbounded',sans-serif;font-size:0.88rem;font-weight:700;color:var(--accent);}
+.new-record-badge{display:none;background:linear-gradient(135deg,var(--accent),#b8cc00);
+  color:#000;font-family:'Unbounded',sans-serif;font-size:0.55rem;font-weight:900;
+  letter-spacing:0.15em;text-transform:uppercase;padding:0.32rem 0.75rem;
+  margin:0 auto 0.9rem;clip-path:polygon(6px 0%,100% 0%,calc(100% - 6px) 100%,0% 100%);width:fit-content;}
+.new-record-badge.show{display:block;}
+
+/* Friend score section */
+.friend-score-box{
+  margin:0 auto 1rem;
+  border:1px solid rgba(0,212,255,0.3);
+  background:rgba(0,212,255,0.05);
+  padding:0.75rem 1rem;
+  width:100%;max-width:340px;
+  display:none;
+}
+.friend-score-box.show{display:block;}
+.friend-score-title{font-family:'Unbounded',sans-serif;font-size:0.48rem;letter-spacing:0.2em;color:var(--accent2);text-transform:uppercase;margin-bottom:0.5rem;}
+.friend-score-compare{display:flex;gap:0;margin-bottom:0.6rem;}
+.fsc-item{flex:1;text-align:center;padding:0.4rem;}
+.fsc-item+.fsc-item{border-left:1px solid var(--border);}
+.fsc-who{font-family:'Unbounded',sans-serif;font-size:0.42rem;letter-spacing:0.15em;color:var(--muted);text-transform:uppercase;margin-bottom:0.2rem;}
+.fsc-val{font-family:'Unbounded',sans-serif;font-size:1.3rem;font-weight:900;line-height:1;}
+.fsc-val.me{color:var(--accent);}
+.fsc-val.friend{color:var(--accent2);}
+.fsc-val.friend.pending{color:var(--muted);font-size:0.8rem;}
+.friend-breakdown{display:flex;gap:0.3rem;flex-wrap:wrap;justify-content:center;}
+.fb-chip{font-family:'Unbounded',sans-serif;font-size:0.55rem;padding:0.22rem 0.5rem;
+  background:var(--surface);border:1px solid rgba(0,212,255,0.2);color:var(--accent2);}
+.friend-input-row{display:flex;gap:0.4rem;margin-top:0.5rem;}
+.friend-input{
+  flex:1;background:var(--bg);border:1px solid var(--border);
+  color:var(--text);font-family:'Unbounded',sans-serif;font-size:0.72rem;
+  font-weight:700;letter-spacing:0.15em;padding:0.42rem 0.6rem;
+  text-transform:uppercase;outline:none;-webkit-appearance:none;min-width:0;
+}
+.friend-input:focus{border-color:var(--accent2);}
+.friend-submit{
+  background:var(--accent2);color:#000;border:none;
+  font-family:'Unbounded',sans-serif;font-size:0.5rem;font-weight:700;
+  padding:0.42rem 0.65rem;cursor:pointer;letter-spacing:0.06em;text-transform:uppercase;
+  touch-action:manipulation;white-space:nowrap;flex-shrink:0;
+}
+.friend-submit:active{filter:brightness(0.85);}
+.winner-badge{
+  font-family:'Unbounded',sans-serif;font-size:0.55rem;font-weight:700;letter-spacing:0.15em;
+  text-transform:uppercase;padding:0.25rem 0.6rem;
+  display:inline-block;margin-top:0.4rem;
+  clip-path:polygon(5px 0%,100% 0%,calc(100% - 5px) 100%,0% 100%);
+}
+.winner-badge.win{background:var(--accent);color:#000;}
+.winner-badge.lose{background:var(--accent3);color:#fff;}
+.winner-badge.draw{background:var(--muted);color:#000;}
+
+.btn-restart{
+  font-family:'Unbounded',sans-serif;font-size:0.78rem;font-weight:700;
+  letter-spacing:0.1em;text-transform:uppercase;background:var(--accent);color:#000;
+  border:none;padding:0.9rem 2.2rem;cursor:pointer;
+  clip-path:polygon(8px 0%,100% 0%,calc(100% - 8px) 100%,0% 100%);
+  touch-action:manipulation;box-shadow:0 0 30px rgba(232,255,0,0.3);
+}
+.btn-restart:active{transform:scale(0.97);}
+.grid-bg{position:absolute;inset:0;
+  background-image:linear-gradient(var(--border) 1px,transparent 1px),
+                   linear-gradient(90deg,var(--border) 1px,transparent 1px);
+  background-size:50px 50px;opacity:0.14;pointer-events:none;}
+
+/* ══════════════════════════════════════════════════════ LOADING */
+#loadingOverlay{
+  position:absolute;inset:0;background:#03030a;
+  display:flex;flex-direction:column;align-items:center;justify-content:flex-end;
+  z-index:100;overflow:hidden;
+}
+#loadingOverlay.hidden{display:none!important;}
+#loadingCanvas{position:absolute;inset:0;width:100%;height:100%;}
+.loading-ui{
+  position:relative;z-index:5;
+  display:flex;flex-direction:column;align-items:center;
+  padding-bottom:8vh;pointer-events:none;
+}
+.loading-main-title{
+  font-family:'Unbounded',sans-serif;
+  font-size:clamp(3rem,13vw,7rem);
+  font-weight:900;letter-spacing:-0.05em;line-height:0.9;
+  text-align:center;color:var(--accent);
+  animation:lglow 2.5s ease-in-out infinite;
+}
+@keyframes lglow{
+  0%,100%{text-shadow:0 0 60px rgba(232,255,0,0.5),0 0 120px rgba(232,255,0,0.12);}
+  50%{text-shadow:0 0 130px rgba(232,255,0,0.95),0 0 260px rgba(232,255,0,0.3),0 0 500px rgba(232,255,0,0.08);}
+}
+.loading-sub-title{
+  font-family:'Unbounded',sans-serif;font-size:clamp(0.55rem,2.2vw,0.85rem);
+  letter-spacing:0.45em;color:var(--accent2);text-transform:uppercase;
+  margin-top:0.4rem;margin-bottom:1.8rem;opacity:0.9;
+  text-shadow:0 0 20px rgba(0,212,255,0.5);
+}
+.loading-status{
+  font-family:'Unbounded',sans-serif;font-size:clamp(0.5rem,1.8vw,0.65rem);
+  letter-spacing:0.2em;color:var(--muted);text-transform:uppercase;margin-bottom:0.8rem;
+  animation:blink 1.5s ease-in-out infinite;
+}
+@keyframes blink{0%,100%{opacity:0.35;}50%{opacity:1;}}
+.loading-bar-wrap{width:min(60vw,280px);height:2px;background:rgba(255,255,255,0.07);overflow:hidden;}
+.loading-bar-fill{
+  height:100%;background:linear-gradient(90deg,transparent,var(--accent2) 40%,var(--accent));
+  box-shadow:0 0 16px var(--accent);animation:barsweep 3s ease-in-out infinite;
+}
+@keyframes barsweep{
+  0%{width:0;margin-left:0;opacity:1;}60%{width:80%;margin-left:0;opacity:1;}
+  90%{width:100%;margin-left:0;opacity:0.6;}100%{width:0;margin-left:100%;opacity:0;}
+}
+#loadingOverlay::after{
+  content:'';position:absolute;inset:0;z-index:4;pointer-events:none;
+  background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,0.06) 3px,rgba(0,0,0,0.06) 4px);
+}
+
+/* misc */
+#skipNotice{
+  position:absolute;top:62px;left:50%;transform:translateX(-50%);
+  background:rgba(24,24,31,0.95);border:1px solid var(--border);
+  padding:0.45rem 0.9rem;font-size:0.65rem;color:var(--muted);
+  white-space:nowrap;z-index:15;display:none;
+}
+</style>
+</head>
+<body>
+
+<!-- ══ START ═════════════════════════════════════════════════════════════════ -->
+<div class="screen" id="startScreen">
+  <canvas id="startBg"></canvas>
+
+  <!-- Logo above content -->
+  <div class="logo-wrap">
+    <div style="display:inline-block;position:relative;">
+      <div class="logo-shadow">ГЕО<em>СЫ</em>ЩИК<span class="dot">.</span></div>
+      <div class="logo">ГЕО<em>СЫ</em>ЩИК<span class="dot">.</span></div>
+    </div>
+  </div>
+
+  <!-- Scrollable bottom content -->
+  <div class="start-content">
+    <div class="tagline">Угадай где ты находишься · Исследуй планету</div>
+
+    <div class="mode-tabs" style="max-width:340px;">
+      <div class="mode-tab active" id="tabSolo" onclick="setMode('solo')">
+        <span class="mode-tab-icon">🇷🇺</span><span>СНГ</span>
+      </div>
+      <div class="mode-tab" id="tabWorld" onclick="setMode('world')">
+        <span class="mode-tab-icon">🌐</span><span>Весь мир</span>
+      </div>
+      <div class="mode-tab" id="tabCoop" onclick="setMode('coop')">
+        <span class="mode-tab-icon">👥</span><span>С другом</span>
+      </div>
+    </div>
+
+    <div class="world-hint" id="worldHint">🌐 Панорамы со всего мира через Mapillary</div>
+      <div class="coop-label">Код сессии</div>
+      <div class="coop-row">
+        <input class="coop-input" id="coopCode" placeholder="КОД ДРУГА..." maxlength="6" autocomplete="off" spellcheck="false">
+        <button class="coop-gen" onclick="generateCode()">СОЗДАТЬ</button>
+      </div>
+      <div class="coop-hint">Создай код и отправь другу — сыграете на одинаковых локациях и сравните результаты!</div>
+    </div>
+
+    <button class="btn-primary" onclick="startGame()">НАЧАТЬ ИГРУ</button>
+    <div class="start-sub">5 раундов · панорамы Яндекс · до 5000 очков за раунд</div>
+
+    <div class="daily-stats">
+      <div class="daily-stats-title">📅 Статистика по дням</div>
+      <div class="daily-stats-grid">
+        <div class="ds-item">
+          <div class="ds-val" id="statGamesPlayed">0</div>
+          <div class="ds-lbl">Игр сегодня</div>
+        </div>
+        <div class="ds-item best">
+          <div class="ds-val" id="statBestToday">—</div>
+          <div class="ds-lbl">Рекорд дня</div>
+        </div>
+        <div class="ds-item">
+          <div class="ds-val" id="statStreak">0</div>
+          <div class="ds-lbl">Дней подряд</div>
+        </div>
+      </div>
+      <div class="day-history-wrap">
+        <div class="day-history" id="dayHistory"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ GAME ═══════════════════════════════════════════════════════════════════ -->
+<div class="screen hidden" id="gameScreen">
+  <div id="timerBar" style="width:100%"></div>
+  <div id="mapillaryContainer">
+    <div class="mly-loading" id="mlyLoading">
+      <div class="mly-spinner"></div>
+      <div class="mly-loading-text" id="mlyLoadingText">Загрузка панорамы...</div>
+    </div>
+    <div id="mapillaryViewer"></div>
+  </div>
+  <div class="world-badge" id="worldBadge">🌐 Режим: Весь мир</div>
+  <div id="skipNotice">🔄 Нет панорамы — ищем другую...</div>
+
+  <div id="hud">
+    <div><div class="hud-label">Раунд</div><div class="hud-value" id="hudRound">1</div></div>
+    <div style="position:relative;text-align:center;">
+      <div class="round-indicator" id="roundPips"></div>
+      <div class="coop-badge hidden" id="coopBadge">👥 КОД: <span id="hudCoopCode"></span></div>
+    </div>
+    <div style="text-align:right"><div class="hud-label">Счёт</div><div class="hud-value" id="hudScore">0</div></div>
+  </div>
+
+  <div id="guessPanel">
+    <div id="guessPanelHeader" onclick="togglePanel()">
+      <span class="panel-title">📍 Поставь метку</span>
+      <span class="toggle-icon" id="toggleIcon">⤢</span>
+    </div>
+    <div id="guessMapContainer"><div id="guessMap"></div></div>
+    <button id="guessBtn" disabled onclick="submitGuess()">ПОДТВЕРДИТЬ</button>
+    <div class="guess-hint">Тапни карту · нажми заголовок чтобы свернуть</div>
+  </div>
+</div>
+
+<!-- ══ RESULT ═════════════════════════════════════════════════════════════════ -->
+<div class="screen hidden" id="resultScreen">
+  <div id="resultMap"></div>
+  <div class="result-panel">
+    <div class="result-row">
+      <div class="result-round-label" id="resultRoundLabel">РАУНД 1</div>
+    </div>
+    <div class="result-row">
+      <div>
+        <div class="result-score" id="resultScore">0</div>
+        <div class="result-score-label">очков</div>
+      </div>
+      <div style="text-align:right">
+        <div class="result-distance">До цели: <span id="resultDist">—</span></div>
+        <div id="resultLocName" style="font-size:0.65rem;color:var(--muted);margin-top:0.2rem;"></div>
+      </div>
+    </div>
+    <div class="result-divider"></div>
+    <div class="rounds-row" id="roundScoresList"></div>
+    <div>
+      <div style="display:flex;justify-content:space-between;font-size:0.6rem;color:var(--muted);margin-bottom:0.28rem;">
+        <span>Итого: <strong id="totalScoreDisplay" style="color:var(--text)">0</strong></span>
+        <span>из 25 000</span>
+      </div>
+      <div class="score-bar"><div class="score-bar-fill" id="scoreBarFill" style="width:0%"></div></div>
+    </div>
+    <button class="btn-next" id="nextBtn" onclick="nextRound()">СЛЕДУЮЩИЙ РАУНД →</button>
+  </div>
+</div>
+
+<!-- ══ FINAL ══════════════════════════════════════════════════════════════════ -->
+<div class="screen hidden" id="finalScreen">
+  <div class="grid-bg" style="opacity:0.12;"></div>
+  <div class="final-inner">
+    <div class="final-title">Игра завершена</div>
+    <div class="final-score" id="finalScore">0</div>
+    <div class="final-score-max">из 25 000 очков</div>
+    <div class="final-grade" id="finalGrade"></div>
+    <div class="new-record-badge" id="newRecordBadge">🏆 Новый рекорд дня!</div>
+    <div class="final-breakdown" id="finalBreakdown"></div>
+
+    <!-- Friend comparison (coop mode only) -->
+    <div class="friend-score-box" id="friendScoreBox">
+      <div class="friend-score-title">👥 Сравни с другом</div>
+      <div class="friend-score-compare">
+        <div class="fsc-item">
+          <div class="fsc-who">Ты</div>
+          <div class="fsc-val me" id="fscMe">0</div>
+        </div>
+        <div class="fsc-item">
+          <div class="fsc-who">Друг</div>
+          <div class="fsc-val friend pending" id="fscFriend">Введи счёт</div>
+        </div>
+      </div>
+      <div class="friend-breakdown" id="friendBreakdown"></div>
+      <div id="winnerBadgeWrap"></div>
+      <div class="friend-input-row" id="friendInputRow">
+        <input class="friend-input" id="friendScoreInput" placeholder="СЧЁТ ДРУГА" maxlength="6"
+          type="number" min="0" max="25000" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+        <button class="friend-submit" onclick="submitFriendScore()">ОК</button>
+      </div>
+    </div>
+
+    <button class="btn-restart" onclick="restartGame()">ИГРАТЬ СНОВА</button>
+  </div>
+</div>
+
+<!-- ══ LOADING ════════════════════════════════════════════════════════════════ -->
+<div id="loadingOverlay">
+  <canvas id="loadingCanvas"></canvas>
+  <div class="loading-ui">
+    <div class="loading-main-title">ГЕОСЫЩИК</div>
+    <div class="loading-sub-title">Навигатор · Исследователь · Детектив</div>
+    <div class="loading-status" id="loadingText">Загрузка карты...</div>
+    <div class="loading-bar-wrap"><div class="loading-bar-fill"></div></div>
+  </div>
+</div>
+
+<script src="https://api-maps.yandex.ru/2.1/?apikey=1405f2a3-9082-4032-aeeb-27bcae3ec8ac&lang=ru_RU&load=package.full"></script>
+<script>
+// ─── TELEGRAM ─────────────────────────────────────────────────────────────────
+const tg=window.Telegram?.WebApp;
+if(tg){tg.ready();tg.expand();tg.disableVerticalSwipes?.();}
+
+// ─── DAILY STATS ──────────────────────────────────────────────────────────────
+const SK='geosys_v4';
+function todayKey(){return new Date().toISOString().slice(0,10);}
+function loadStats(){try{return JSON.parse(localStorage.getItem(SK))||{};}catch{return {};}}
+function saveStats(s){try{localStorage.setItem(SK,JSON.stringify(s));}catch{}}
+function updateDailyRecord(score){
+  const s=loadStats(),k=todayKey();
+  if(!s[k])s[k]={games:0,best:0};
+  s[k].games++;const isNew=score>s[k].best;
+  if(isNew)s[k].best=score;saveStats(s);return isNew;
+}
+function renderDailyStats(){
+  const stats=loadStats(),k=todayKey(),td=stats[k]||{games:0,best:0};
+  document.getElementById('statGamesPlayed').textContent=td.games;
+  document.getElementById('statBestToday').textContent=td.best>0?td.best.toLocaleString('ru'):'—';
+  let streak=0,d=new Date();
+  while(true){const kk=d.toISOString().slice(0,10);if(stats[kk]?.games>0){streak++;d.setDate(d.getDate()-1);}else break;}
+  document.getElementById('statStreak').textContent=streak;
+  const hist=document.getElementById('dayHistory');hist.innerHTML='';const MAX=25000;
+  for(let i=13;i>=0;i--){
+    const dd=new Date();dd.setDate(dd.getDate()-i);const kk=dd.toISOString().slice(0,10);
+    const ds=stats[kk];const bar=document.createElement('div');bar.className='day-bar';
+    if(ds&&ds.best>0){
+      bar.style.height=Math.max(10,(ds.best/MAX)*100)+'%';
+      bar.classList.add(i===0?'today':'has-score');
+      const tip=document.createElement('div');tip.className='bar-tooltip';
+      tip.textContent=ds.best.toLocaleString('ru')+' очков';bar.appendChild(tip);
+    }else{bar.style.height='8%';if(i===0)bar.classList.add('today');}
+    hist.appendChild(bar);
+  }
+}
+
+// ─── LOCATIONS ────────────────────────────────────────────────────────────────
+const ALL_LOCATIONS=[
+  // МОСКВА
+  {c:[55.7539,37.6208],l:"Москва, Красная площадь"},
+  {c:[55.7558,37.6176],l:"Москва, ГУМ"},
+  {c:[55.7347,37.5875],l:"Москва, Арбат"},
+  {c:[55.7890,37.5957],l:"Москва, ВДНХ"},
+  {c:[55.7296,37.6078],l:"Москва, Парк Горького"},
+  {c:[55.7617,37.6085],l:"Москва, Тверская улица"},
+  {c:[55.7649,37.5801],l:"Москва, Патриаршие пруды"},
+  {c:[55.8244,37.6382],l:"Москва, Останкино"},
+  {c:[55.7033,37.5617],l:"Москва, Воробьёвы горы"},
+  {c:[55.7547,37.6215],l:"Москва, Лобное место"},
+  {c:[55.7316,37.5862],l:"Москва, Нескучный сад"},
+  {c:[55.7419,37.6324],l:"Москва, Замоскворечье"},
+  {c:[55.7488,37.5422],l:"Москва, Новодевичий монастырь"},
+  {c:[55.7597,37.7005],l:"Москва, Измайловский кремль"},
+  {c:[55.7432,37.5343],l:"Москва, Лужники"},
+  {c:[55.7195,37.6589],l:"Москва, Коломенское"},
+  {c:[55.7700,37.5297],l:"Москва, Фили"},
+  {c:[55.8037,37.4924],l:"Москва, Серебряный бор"},
+  {c:[55.7761,37.6555],l:"Москва, Преображенская площадь"},
+  {c:[55.6877,37.5517],l:"Москва, Тропарёво"},
+  {c:[55.7478,37.6201],l:"Москва, Кремль — Спасская башня"},
+  {c:[55.7525,37.6150],l:"Москва, Манежная площадь"},
+  {c:[55.7452,37.6197],l:"Москва, Чистые пруды"},
+  {c:[55.7340,37.6451],l:"Москва, Таганская площадь"},
+  // САНКТ-ПЕТЕРБУРГ
+  {c:[59.9386,30.3141],l:"СПб, Дворцовая площадь"},
+  {c:[59.9311,30.3609],l:"СПб, Невский проспект"},
+  {c:[59.9504,30.3165],l:"СПб, Петроградская сторона"},
+  {c:[59.9246,30.3231],l:"СПб, Сенная площадь"},
+  {c:[59.9557,30.2390],l:"СПб, Петропавловская крепость"},
+  {c:[59.9449,30.2946],l:"СПб, Стрелка Васильевского острова"},
+  {c:[59.8825,30.4236],l:"СПб, Смольный собор"},
+  {c:[59.9279,30.3591],l:"СПб, площадь Восстания"},
+  {c:[59.9432,30.2928],l:"СПб, Университетская набережная"},
+  {c:[59.9656,30.3160],l:"СПб, Лесной проспект"},
+  {c:[59.9241,30.4224],l:"СПб, Невская застава"},
+  {c:[59.9372,30.3259],l:"СПб, Исаакиевский собор"},
+  // ПРИГОРОДЫ СПБ
+  {c:[59.8758,29.9100],l:"Петергоф, Большой каскад"},
+  {c:[59.8534,30.1155],l:"Пушкин, Екатерининский дворец"},
+  {c:[60.0225,30.2625],l:"Репино, усадьба Пенаты"},
+  {c:[59.7210,30.1100],l:"Ораниенбаум, дворцовый парк"},
+  {c:[59.9185,30.7650],l:"Шлиссельбург, крепость Орешек"},
+  // ЕКАТЕРИНБУРГ
+  {c:[56.8380,60.6054],l:"Екатеринбург, Плотинка"},
+  {c:[56.8356,60.6125],l:"Екатеринбург, ул. Вайнера"},
+  {c:[56.8500,60.6122],l:"Екатеринбург, площадь 1905 года"},
+  {c:[56.8432,60.6448],l:"Екатеринбург, набережная Исети"},
+  {c:[56.8590,60.5967],l:"Екатеринбург, Уралмаш"},
+  // НОВОСИБИРСК
+  {c:[55.0302,82.9204],l:"Новосибирск, Красный проспект"},
+  {c:[55.0284,82.9272],l:"Новосибирск, площадь Ленина"},
+  {c:[54.9948,82.8962],l:"Новосибирск, Речной вокзал"},
+  {c:[55.0449,82.9097],l:"Новосибирск, Зоопарк"},
+  {c:[54.9824,82.9060],l:"Новосибирск, Академгородок"},
+  // КАЗАНЬ
+  {c:[55.7963,49.1082],l:"Казань, кремль"},
+  {c:[55.7887,49.1222],l:"Казань, ул. Баумана"},
+  {c:[55.7847,49.1175],l:"Казань, площадь Тукая"},
+  {c:[55.8033,49.0962],l:"Казань, озеро Кабан"},
+  {c:[55.7937,49.1290],l:"Казань, Старо-Татарская слобода"},
+  // ВЛАДИВОСТОК
+  {c:[43.1156,131.8855],l:"Владивосток, Спортивная набережная"},
+  {c:[43.1347,131.8967],l:"Владивосток, Орлиное гнездо"},
+  {c:[43.1075,131.8784],l:"Владивосток, Золотой Рог"},
+  {c:[43.1038,131.8706],l:"Владивосток, набережная Цесаревича"},
+  {c:[43.1187,131.9102],l:"Владивосток, Центральная площадь"},
+  // ЮГ России
+  {c:[43.5853,39.7203],l:"Сочи, Морской вокзал"},
+  {c:[43.5994,39.7353],l:"Сочи, Курортный проспект"},
+  {c:[43.6681,40.3200],l:"Красная Поляна, Роза Хутор"},
+  {c:[43.5500,39.9174],l:"Адлер, Олимпийский парк"},
+  {c:[44.5590,38.0686],l:"Анапа, центр"},
+  {c:[44.7200,37.7694],l:"Новороссийск, набережная"},
+  {c:[44.9573,34.1088],l:"Симферополь, центр"},
+  {c:[44.6166,33.5254],l:"Севастополь, набережная"},
+  {c:[45.3394,36.4660],l:"Керчь, крепость"},
+  {c:[44.4939,34.1663],l:"Алушта, набережная"},
+  {c:[44.4956,34.2607],l:"Ялта, набережная"},
+  {c:[47.2357,39.7015],l:"Ростов-на-Дону, Большая Садовая"},
+  {c:[47.2262,39.7190],l:"Ростов-на-Дону, набережная"},
+  {c:[45.0448,38.9760],l:"Краснодар, Красная улица"},
+  {c:[45.0310,38.9830],l:"Краснодар, сквер Дружбы"},
+  {c:[45.0428,41.9694],l:"Ставрополь, пр. Карла Маркса"},
+  {c:[43.3174,45.6977],l:"Грозный, пр. Путина"},
+  {c:[43.3061,45.6980],l:"Грозный, мечеть Сердце Чечни"},
+  {c:[42.9849,47.5047],l:"Махачкала, пр. Ленина"},
+  {c:[42.9700,47.5025],l:"Махачкала, Родопский бульвар"},
+  {c:[43.4831,43.6083],l:"Нальчик, пр. Ленина"},
+  {c:[43.1930,44.6814],l:"Владикавказ, пр. Мира"},
+  {c:[44.0480,43.0600],l:"Пятигорск, бульвар Гагарина"},
+  {c:[44.0391,43.0747],l:"Пятигорск, Провал"},
+  // НИЖНИЙ НОВГОРОД
+  {c:[56.3287,44.0020],l:"Нижний Новгород, кремль"},
+  {c:[56.3200,43.9886],l:"Нижний Новгород, Большая Покровская"},
+  {c:[56.3345,44.0231],l:"Нижний Новгород, площадь Минина"},
+  {c:[56.2976,43.9882],l:"Нижний Новгород, стрелка Оки и Волги"},
+  // САМАРА / ВОЛГА
+  {c:[53.2001,50.1500],l:"Самара, набережная Волги"},
+  {c:[53.1932,50.1506],l:"Самара, ул. Куйбышева"},
+  {c:[53.2156,50.1625],l:"Самара, площадь Куйбышева"},
+  {c:[53.5215,49.3926],l:"Тольятти, бульвар Ленина"},
+  {c:[51.5333,46.0350],l:"Саратов, пр. Кирова"},
+  {c:[51.6618,39.1997],l:"Воронеж, пр. Революции"},
+  {c:[48.7080,44.5133],l:"Волгоград, Мамаев Курган"},
+  {c:[48.7089,44.5179],l:"Волгоград, набережная 62-й Армии"},
+  {c:[46.3479,48.0337],l:"Астрахань, кремль"},
+  // УРАЛ
+  {c:[55.1622,61.4034],l:"Челябинск, Кировка"},
+  {c:[55.1547,61.3765],l:"Челябинск, площадь Революции"},
+  {c:[55.1682,61.3784],l:"Челябинск, набережная Миасса"},
+  {c:[54.7387,55.9721],l:"Уфа, Монумент Дружбы"},
+  {c:[54.7388,55.9590],l:"Уфа, ул. Ленина"},
+  {c:[58.0104,56.2502],l:"Пермь, Художественная галерея"},
+  {c:[58.0059,56.2362],l:"Пермь, Эспланада"},
+  {c:[58.0174,56.2290],l:"Пермь, набережная Камы"},
+  {c:[56.8519,53.2047],l:"Ижевск, набережная пруда"},
+  {c:[57.1522,65.5272],l:"Тюмень, ул. Республики"},
+  {c:[57.1595,65.5344],l:"Тюмень, Цветной бульвар"},
+  {c:[55.4408,65.3211],l:"Курган, ул. Советская"},
+  {c:[53.4098,59.0603],l:"Магнитогорск, Народных гуляний"},
+  // СИБИРЬ
+  {c:[55.0302,82.9204],l:"Новосибирск, Красный проспект"},
+  {c:[55.9960,92.7926],l:"Красноярск, Театральная площадь"},
+  {c:[55.9880,92.8144],l:"Красноярск, о. Татышев"},
+  {c:[56.0090,92.8529],l:"Красноярск, часовня Параскевы"},
+  {c:[54.9885,73.3753],l:"Омск, набережная Иртыша"},
+  {c:[56.4884,84.9480],l:"Томск, пр. Ленина"},
+  {c:[56.4912,84.9568],l:"Томск, Воскресенская гора"},
+  {c:[55.3591,86.0878],l:"Кемерово, набережная Томи"},
+  {c:[53.8038,87.1346],l:"Новокузнецк, пр. Металлургов"},
+  {c:[57.1522,65.5272],l:"Тюмень, ул. Республики"},
+  {c:[52.2978,104.2964],l:"Иркутск, ул. Карла Маркса"},
+  {c:[52.2869,104.3058],l:"Иркутск, Московские ворота"},
+  {c:[51.8737,104.8830],l:"Байкал, порт Листвянка"},
+  {c:[51.5183,105.0780],l:"Байкал, Слюдянка"},
+  {c:[53.7580,108.9943],l:"Байкал, Ольхон, Хужир"},
+  {c:[52.0335,113.4997],l:"Чита, ул. Ленина"},
+  {c:[62.0355,129.6750],l:"Якутск, площадь Ленина"},
+  {c:[48.4827,135.0840],l:"Хабаровск, Уссурийский бульвар"},
+  {c:[48.4714,135.0625],l:"Хабаровск, набережная Амура"},
+  // СЕВЕР
+  {c:[68.9792,33.0925],l:"Мурманск, пр. Ленина"},
+  {c:[68.9732,33.0853],l:"Мурманск, Алёша — мемориал"},
+  {c:[64.5393,40.5165],l:"Архангельск, набережная Двины"},
+  {c:[61.7853,34.3469],l:"Петрозаводск, набережная Онего"},
+  {c:[62.0570,34.8140],l:"Кижи, остров-музей"},
+  {c:[63.5576,53.6842],l:"Воркута, ул. Ленина"},
+  {c:[66.5352,66.6155],l:"Инта, ул. Горького"},
+  {c:[67.5494,64.0444],l:"Надым, ул. Ленина"},
+  {c:[69.3513,88.2026],l:"Норильск, площадь Металлургов"},
+  // КАЛИНИНГРАД
+  {c:[54.7104,20.5101],l:"Калининград, Рыбная деревня"},
+  {c:[54.7065,20.5085],l:"Калининград, Кафедральный собор"},
+  {c:[54.7141,20.4880],l:"Калининград, площадь Победы"},
+  {c:[54.6457,20.2437],l:"Балтийск, набережная"},
+  // ЗОЛОТОЕ КОЛЬЦО И ЦЕНТР
+  {c:[56.1289,40.4067],l:"Владимир, Золотые ворота"},
+  {c:[56.1267,40.4162],l:"Владимир, Дмитриевский собор"},
+  {c:[56.4228,40.4449],l:"Суздаль, кремль"},
+  {c:[56.4175,40.4469],l:"Суздаль, Торговая площадь"},
+  {c:[56.3105,38.1313],l:"Сергиев Посад, Лавра"},
+  {c:[57.0220,40.9690],l:"Кострома, Сусанинская площадь"},
+  {c:[57.2606,42.6739],l:"Плёс, Ивановская гора"},
+  {c:[57.6261,39.8845],l:"Ярославль, Стрелка"},
+  {c:[57.6228,39.8978],l:"Ярославль, Советская площадь"},
+  {c:[57.8254,40.9710],l:"Ярославль, Толга монастырь"},
+  {c:[56.9184,41.0068],l:"Иваново, площадь Революции"},
+  {c:[54.1931,37.6174],l:"Тула, кремль"},
+  {c:[54.5140,36.2571],l:"Калуга, Музей космонавтики"},
+  {c:[54.5293,36.2754],l:"Калуга, ул. Кирова"},
+  {c:[54.6269,39.7358],l:"Рязань, кремль"},
+  {c:[52.9651,36.0785],l:"Орёл, Красный мост"},
+  {c:[56.8584,35.9176],l:"Тверь, Советская площадь"},
+  {c:[56.8486,35.9129],l:"Тверь, набережная Волги"},
+  {c:[58.5218,31.2695],l:"Великий Новгород, кремль"},
+  {c:[57.8190,28.3318],l:"Псков, кремль"},
+  {c:[57.7792,28.3379],l:"Изборск, крепость"},
+  {c:[59.2236,39.8845],l:"Вологда, кремль"},
+  {c:[56.6344,47.8945],l:"Йошкар-Ола, бульвар Чавайна"},
+  {c:[58.6036,49.6680],l:"Киров, набережная Грина"},
+  {c:[56.1387,47.2483],l:"Чебоксары, Чебоксарский залив"},
+  {c:[54.7827,32.0499],l:"Смоленск, Лопатинский сад"},
+  {c:[50.5958,36.5879],l:"Белгород, площадь Революции"},
+  // ДАЛЬНИЙ ВОСТОК
+  {c:[43.5862,39.7280],l:"Сочи, Дендрарий"},
+  {c:[46.9590,142.7359],l:"Южно-Сахалинск, площадь Ленина"},
+  {c:[53.0093,158.6481],l:"Петропавловск-Камчатский, Авачинская бухта"},
+  {c:[64.5548,143.2275],l:"Магадан, ул. Ленина"},
+  {c:[67.5560,153.6988],l:"Среднеколымск, набережная"},
+  // БЛИЖНЕЕ ЗАРУБЕЖЬЕ
+  {c:[53.9028,27.5615],l:"Минск, пр. Независимости"},
+  {c:[53.8834,27.5618],l:"Минск, Троицкое предместье"},
+  {c:[53.9045,27.5615],l:"Минск, площадь Независимости"},
+  {c:[50.4501,30.5234],l:"Киев, Крещатик"},
+  {c:[50.4621,30.4786],l:"Киев, Андреевский спуск"},
+  {c:[49.8397,24.0297],l:"Львов, площадь Рынок"},
+  {c:[41.6938,44.8015],l:"Тбилиси, пр. Руставели"},
+  {c:[41.6900,44.7965],l:"Тбилиси, Старый город"},
+  {c:[41.6914,44.8013],l:"Тбилиси, Метехи"},
+  {c:[41.8298,44.7503],l:"Мцхета, Светицховели"},
+  {c:[41.9790,43.4803],l:"Кутаиси, центр"},
+  {c:[42.2679,42.7007],l:"Батуми, набережная"},
+  {c:[40.4093,49.8671],l:"Баку, Ичери-шехер"},
+  {c:[40.3777,49.8920],l:"Баку, набережная Хазара"},
+  {c:[40.5340,49.9497],l:"Баку, Шемахинское шоссе"},
+  {c:[40.1810,44.5136],l:"Ереван, площадь Республики"},
+  {c:[40.2018,44.4981],l:"Ереван, каскад"},
+  {c:[40.1668,44.2985],l:"Гарни, храм"},
+  {c:[43.2220,76.8512],l:"Алматы, пр. Достык"},
+  {c:[43.2566,76.9285],l:"Алматы, Медеу"},
+  {c:[43.2587,76.9458],l:"Алматы, Шымбулак"},
+  {c:[51.1694,71.4491],l:"Нур-Султан, Байтерек"},
+  {c:[51.1680,71.4449],l:"Нур-Султан, Дворец Независимости"},
+  {c:[41.2995,69.2401],l:"Ташкент, площадь Независимости"},
+  {c:[41.3123,69.2798],l:"Ташкент, Чорсу базар"},
+  {c:[39.6540,66.9597],l:"Самарканд, площадь Регистан"},
+  {c:[39.6665,66.9750],l:"Самарканд, мавзолей Гур-Эмир"},
+  {c:[39.7740,64.4286],l:"Бухара, Ляби-Хауз"},
+  {c:[39.7736,64.4160],l:"Бухара, мечеть Калян"},
+  {c:[41.5218,60.6166],l:"Хива, Ичан-Кала"},
+  {c:[37.9601,58.3261],l:"Ашхабад, пр. Нейтральности"},
+  {c:[42.8746,74.5698],l:"Бишкек, площадь Ала-Тоо"},
+  {c:[42.4720,78.3965],l:"Каракол, центр"},
+  {c:[42.4749,75.9921],l:"Нарын, ул. Ленина"},
+  {c:[47.0105,28.8638],l:"Кишинёв, Центральный парк"},
+  {c:[47.2289,28.4910],l:"Тирасполь, ул. Ленина"},
+  {c:[47.7603,27.9292],l:"Бельцы, центральный рынок"},
+  {c:[56.9460,24.1059],l:"Рига, Старая Рига"},
+  {c:[56.9490,24.1280],l:"Рига, Рижский замок"},
+  {c:[59.4370,24.7536],l:"Таллин, Ратушная площадь"},
+  {c:[59.4369,24.7453],l:"Таллин, Вышгород"},
+  {c:[54.6872,25.2797],l:"Вильнюс, Старый город"},
+  {c:[54.6892,25.2722],l:"Вильнюс, площадь Кафедрального собора"},
+  {c:[54.8985,23.9036],l:"Каунас, Ратушная площадь"},
+  {c:[55.9299,23.3154],l:"Шяуляй, гора Крестов"},
+  {c:[57.3789,25.2726],l:"Цесис, замок Ливонского ордена"},
+  {c:[58.3794,26.7161],l:"Тарту, Ратушная площадь"},
+  {c:[57.5408,25.4246],l:"Вalmiera, замок"},
+  // МОНГОЛИЯ / АЗИЯ
+  {c:[47.9077,106.8832],l:"Улан-Батор, площадь Чингисхана"},
+  {c:[47.9020,106.8890],l:"Улан-Батор, Гандантэгченлин"},
+  {c:[52.2869,104.3058],l:"Иркутск — ворота Байкала"},
+  // ДОПОЛНИТЕЛЬНЫЕ ИНТЕРЕСНЫЕ
+  {c:[55.7569,37.6155],l:"Москва, Охотный ряд"},
+  {c:[55.7601,37.6400],l:"Москва, Чистопрудный бульвар"},
+  {c:[55.7326,37.6327],l:"Москва, Павелецкая"},
+  {c:[55.7714,37.6788],l:"Москва, Электрозаводская"},
+  {c:[55.7290,37.6444],l:"Москва, Крестьянская застава"},
+  {c:[56.8486,53.2020],l:"Ижевск, ул. Пушкинская"},
+  {c:[53.2156,50.1720],l:"Самара, ул. Фрунзе"},
+  {c:[57.6133,39.9029],l:"Ярославль, Спасо-Преображенский мон."},
+  {c:[60.0186,30.2610],l:"Зеленогорск, парк"},
+  {c:[59.9895,29.5450],l:"Ломоносов, Ораниенбаум"},
+];
+
+// ─── CO-OP / MODE ─────────────────────────────────────────────────────────────
+let gameMode='solo',coopSeed=null,coopCodeVal='';
+function setMode(m){
+  gameMode=m;
+  document.getElementById('tabSolo').classList.toggle('active',m==='solo');
+  document.getElementById('tabWorld').classList.toggle('active',m==='world');
+  document.getElementById('tabCoop').classList.toggle('active',m==='coop');
+  document.getElementById('coopBox').classList.toggle('show',m==='coop');
+  document.getElementById('worldHint').classList.toggle('show',m==='world');
+}
+function generateCode(){
+  const ch='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let c='';for(let i=0;i<6;i++)c+=ch[Math.floor(Math.random()*ch.length)];
+  document.getElementById('coopCode').value=c;
+}
+function seededShuffle(arr,seed){
+  let s=seed;
+  const h=(n)=>{s=(s*1103515245+12345)&0x7fffffff;return s%n;};
+  const a=[...arr];for(let i=a.length-1;i>0;i--){const j=h(i+1);[a[i],a[j]]=[a[j],a[i]];}
+  return a;
+}
+function strToSeed(str){let n=0;for(const c of str)n=(n<<5)-n+c.charCodeAt(0);return Math.abs(n);}
+
+// ─── WORLD LOCATIONS (for Mapillary mode) ────────────────────────────────────
+// [lat, lng, label] — varied iconic/interesting global spots
+const WORLD_LOCATIONS = [
+  // ЕВРОПА
+  [48.8584,2.2945,"Париж, Эйфелева башня"],
+  [48.8606,2.3376,"Париж, Лувр"],
+  [48.8530,2.3499,"Париж, Нотр-Дам"],
+  [51.5074,-0.1278,"Лондон, Трафальгарская площадь"],
+  [51.5033,-0.1195,"Лондон, Биг-Бен"],
+  [51.5081,-0.0759,"Лондон, Тауэрский мост"],
+  [52.3676,4.9041,"Амстердам, Дамрак"],
+  [52.3791,4.9003,"Амстердам, Западная церковь"],
+  [48.2082,16.3738,"Вена, площадь Святого Стефана"],
+  [48.2001,16.3695,"Вена, Хофбург"],
+  [50.0755,14.4378,"Прага, Вацлавская площадь"],
+  [50.0865,14.4208,"Прага, Пражский Град"],
+  [50.0877,14.4205,"Прага, Собор Святого Вита"],
+  [47.3769,8.5417,"Цюрих, старый город"],
+  [46.9483,7.4446,"Берн, аркады"],
+  [45.4654,9.1866,"Милан, Дуомо"],
+  [41.9029,12.4534,"Рим, Колизей"],
+  [41.9002,12.4922,"Рим, Ватикан"],
+  [41.8902,12.5023,"Рим, площадь Навона"],
+  [43.7731,11.2560,"Флоренция, Piazza della Signoria"],
+  [45.4341,12.3388,"Венеция, площадь Сан-Марко"],
+  [45.4380,12.3355,"Венеция, мост Риальто"],
+  [40.4168,-3.7038,"Мадрид, Пуэрта дель Соль"],
+  [40.4155,-3.6923,"Мадрид, Прадо"],
+  [41.3851,2.1734,"Барселона, Саграда Фамилия"],
+  [41.3783,2.1925,"Барселона, Готический квартал"],
+  [38.7167,-9.1395,"Лиссабон, площадь Комерсиу"],
+  [38.6963,-9.2003,"Синтра, Пена"],
+  [53.3498,-6.2603,"Дублин, Темпл Бар"],
+  [55.9533,-3.1883,"Эдинбург, Королевская миля"],
+  [59.9139,10.7522,"Осло, ратуша"],
+  [55.6761,12.5683,"Копенгаген, Нюхавн"],
+  [59.3293,18.0686,"Стокгольм, Гамла Стан"],
+  [60.1699,24.9384,"Хельсинки, Сенатская площадь"],
+  [52.5200,13.4050,"Берлин, Бранденбургские ворота"],
+  [48.1351,11.5820,"Мюнхен, Мариенплац"],
+  [50.9413,6.9583,"Кёльн, собор"],
+  [53.5511,9.9937,"Гамбург, Шпейхерштадт"],
+  [47.1625,8.5403,"Швиц, озеро"],
+  [43.2965,5.3698,"Марсель, старый порт"],
+  [43.7102,7.2620,"Ницца, набережная"],
+  [45.4408,12.3155,"Местре, канал"],
+  // АЗИЯ
+  [35.6762,139.6503,"Токио, Сибуя"],
+  [35.6586,139.7454,"Токио, Токийская башня"],
+  [35.0116,135.7681,"Киото, Гион"],
+  [34.6937,135.5023,"Осака, Дотонбори"],
+  [34.3853,132.4553,"Хиросима, Мемориальный парк"],
+  [22.3193,114.1694,"Гонконг, Виктория Харбор"],
+  [22.2795,114.1628,"Гонконг, Коулун"],
+  [1.3521,103.8198,"Сингапур, Марина Бей"],
+  [1.2800,103.8501,"Сингапур, Чайнатаун"],
+  [13.7563,100.5018,"Бангкок, Большой дворец"],
+  [13.7466,100.5347,"Бангкок, Каосан Роуд"],
+  [21.0278,105.8342,"Ханой, Хоан Кием"],
+  [10.8231,106.6297,"Хошимин, площадь"],
+  [3.1390,101.6869,"Куала-Лумпур, Petronas"],
+  [-6.2088,106.8456,"Джакарта, Монас"],
+  [-8.4095,115.1889,"Бали, Убуд"],
+  [27.1751,78.0421,"Агра, Тадж-Махал"],
+  [28.6139,77.2090,"Нью-Дели, Красный форт"],
+  [19.0760,72.8777,"Мумбай, Ворота Индии"],
+  [12.9716,77.5946,"Бангалор, MG Road"],
+  [13.0827,80.2707,"Ченнаи, набережная"],
+  [31.2304,121.4737,"Шанхай, Бунд"],
+  [39.9042,116.4074,"Пекин, Тяньаньмэнь"],
+  [39.9163,116.3972,"Пекин, Запретный город"],
+  [22.5431,114.0579,"Шэньчжэнь, Window of World"],
+  [23.1291,113.2644,"Гуанчжоу, башня Кантон"],
+  [35.6892,51.3890,"Тегеран, Борж-э-Милад"],
+  [33.3152,44.3661,"Багдад, площадь"],
+  [33.5138,36.2765,"Дамаск, старый город"],
+  [33.8938,35.5018,"Бейрут, Корниш"],
+  [31.7683,35.2137,"Иерусалим, Старый город"],
+  [32.0853,34.7818,"Тель-Авив, набережная Яффо"],
+  [30.0444,31.2357,"Каир, площадь Тахрир"],
+  [30.0131,31.2089,"Каир, Гиза, пирамиды"],
+  // АМЕРИКА
+  [40.7128,-74.0060,"Нью-Йорк, Таймс-сквер"],
+  [40.6892,-74.0445,"Нью-Йорк, Статуя Свободы"],
+  [40.7484,-73.9856,"Нью-Йорк, Эмпайр Стейт"],
+  [41.8827,-87.6233,"Чикаго, The Bean"],
+  [37.8716,-122.2727,"Сан-Франциско, Golden Gate"],
+  [34.0522,-118.2437,"Лос-Анджелес, Голливуд"],
+  [36.1147,-115.1728,"Лас-Вегас, Strip"],
+  [25.7617,-80.1918,"Майами, Ocean Drive"],
+  [29.9511,-90.0715,"Новый Орлеан, Французский квартал"],
+  [47.6062,-122.3321,"Сиэтл, Pike Place"],
+  [49.2827,-123.1207,"Ванкувер, Stanley Park"],
+  [43.6532,-79.3832,"Торонто, CN Tower"],
+  [45.5017,-73.5673,"Монреаль, Плас-д'Арм"],
+  [45.4215,-75.6919,"Оттава, Парламент"],
+  [19.4326,-99.1332,"Мехико, площадь Сокало"],
+  [20.9674,-89.6236,"Чичен-Ица, пирамида"],
+  [8.9936,-79.5197,"Панама, старый город"],
+  [4.7110,-74.0721,"Богота, Ла-Кандэлария"],
+  [-12.0464,-77.0428,"Лима, исторический центр"],
+  [-0.1807,-78.4678,"Кито, площадь"],
+  [-15.7801,-47.9292,"Бразилиа, Эспланада"],
+  [-23.5505,-46.6333,"Сан-Паулу, Паулиста"],
+  [-22.9068,-43.1729,"Рио, Копакабана"],
+  [-22.9519,-43.2105,"Рио, Христос-Искупитель"],
+  [-34.6037,-58.3816,"Буэнос-Айрес, Пласа де Майо"],
+  [-33.4489,-70.6693,"Сантьяго, Plaza de Armas"],
+  // АФРИКА + БЛИЖНИЙ ВОСТОК
+  [36.8065,10.1815,"Тунис, Медина"],
+  [33.9716,2.8306,"Алжир, Касба"],
+  [-25.7479,28.2293,"Претория, Union Buildings"],
+  [-33.9249,18.4241,"Кейптаун, V&A Waterfront"],
+  [-1.2921,36.8219,"Найроби, центр"],
+  [5.3600,-4.0083,"Абиджан, Plateau"],
+  [6.3654,2.4183,"Котону, набережная"],
+  [25.2048,55.2708,"Дубай, Бурдж-Халифа"],
+  [25.1972,55.2744,"Дубай, Dubai Mall"],
+  [24.4539,54.3773,"Абу-Даби, мечеть Шейха Зайда"],
+  [21.3891,39.8579,"Мекка, Масджид аль-Харам"],
+  [24.6877,46.7219,"Эр-Рияд, Kingdom Centre"],
+  [29.3759,47.9774,"Эль-Кувейт, башни"],
+  [26.2235,50.5876,"Манама, бахрейнская башня"],
+  [23.5880,58.3829,"Маскат, старый город"],
+  // ОКЕАНИЯ + АВСТРАЛИЯ
+  [-33.8688,151.2093,"Сидней, Opera House"],
+  [-33.8523,151.2108,"Сидней, Harbour Bridge"],
+  [-37.8136,144.9631,"Мельбурн, Flinders"],
+  [-27.4698,153.0251,"Брисбен, Story Bridge"],
+  [-31.9505,115.8605,"Перт, набережная"],
+  [-36.8485,174.7633,"Окленд, Sky Tower"],
+  [-41.2865,174.7762,"Веллингтон, Te Papa"],
+  [-43.5321,172.6362,"Крайстчерч, центр"],
+];
+
+// ─── MAPILLARY INTEGRATION ────────────────────────────────────────────────────
+const MLY_TOKEN = 'MLY|26721273094165818|f1969d39a48f1cb89d29f2db44937450';
+let mlyViewer = null;
+let mlyLoaded = false;
+
+function loadMapillaryScript(){
+  return new Promise((resolve, reject)=>{
+    if(window.mapillary){ resolve(); return; }
+    const link=document.createElement('link');
+    link.rel='stylesheet';
+    link.href='https://unpkg.com/mapillary-js@4/dist/mapillary.css';
+    document.head.appendChild(link);
+    const s=document.createElement('script');
+    s.src='https://unpkg.com/mapillary-js@4/dist/mapillary.js';
+    s.onload=()=>{ mlyLoaded=true; resolve(); };
+    s.onerror=()=>reject(new Error('Mapillary failed to load'));
+    document.head.appendChild(s);
+  });
+}
+
+async function findNearbyMapillaryImage(lat, lng){
+  // Search for images near the given coordinates using Mapillary Graph API
+  const radius = 200; // meters
+  const url = `https://graph.mapillary.com/images?access_token=${MLY_TOKEN}&fields=id,thumb_2048_url,computed_geometry,captured_at&limit=10&bbox=${lng-0.003},${lat-0.003},${lng+0.003},${lat+0.003}`;
+  try {
+    const res = await fetch(url);
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if(data.data && data.data.length > 0){
+      // Pick a random one from results for variety
+      const idx = Math.floor(Math.random() * Math.min(data.data.length, 5));
+      return data.data[idx].id;
+    }
+    return null;
+  } catch(e){
+    console.error('Mapillary search error:', e);
+    return null;
+  }
+}
+
+async function initMapillaryViewer(imageId){
+  const el = document.getElementById('mapillaryViewer');
+  el.innerHTML = '';
+
+  if(mlyViewer){
+    try{ mlyViewer.remove(); } catch(e){}
+    mlyViewer = null;
+  }
+
+  const { Viewer } = window.mapillary;
+  mlyViewer = new Viewer({
+    accessToken: MLY_TOKEN,
+    container: 'mapillaryViewer',
+    imageId: imageId,
+    component: {
+      cover: false,
+      sequence: { visible: false },
+      attribution: { visible: true },
+    },
+  });
+
+  return new Promise((resolve, reject)=>{
+    mlyViewer.on('load', resolve);
+    mlyViewer.on('dataloaderror', reject);
+    setTimeout(resolve, 8000); // fallback timeout
+  });
+}
+
+async function loadWorldRound(){
+  const pool = st.locationPool;
+  if(!pool.length){ restockWorldPool(); }
+  const loc = pool.shift();
+  const [lat, lng, label] = loc;
+
+  // Store actual location
+  st.locations[st.round] = { coords: [lat, lng], label };
+
+  // Show Mapillary container, hide Yandex panorama
+  document.getElementById('panoramaContainer').style.display = 'none';
+  document.getElementById('mapillaryContainer').classList.add('show');
+  document.getElementById('worldBadge').classList.add('show');
+  document.getElementById('mlyLoading').classList.remove('hidden');
+  document.getElementById('mlyLoadingText').textContent = `Ищем панораму: ${label}...`;
+
+  try {
+    if(!mlyLoaded) await loadMapillaryScript();
+
+    // Try to find image near location, with fallback to wider search
+    let imgId = null;
+    const attempts = [
+      [lat, lng],
+      [lat + 0.005, lng + 0.005],
+      [lat - 0.005, lng],
+      [lat, lng + 0.01],
+      [lat + 0.01, lng - 0.01],
+    ];
+    for(const [la, lo] of attempts){
+      imgId = await findNearbyMapillaryImage(la, lo);
+      if(imgId) break;
+    }
+
+    if(!imgId){
+      // No image found — try next location
+      document.getElementById('mlyLoadingText').textContent = 'Нет панорамы, пробуем другое место...';
+      if(pool.length > 0){ await loadWorldRound(); } else {
+        document.getElementById('mlyLoadingText').textContent = 'Нет панорам для этого места. Пропускаем...';
+        setTimeout(()=>loadWorldRound(), 1500);
+      }
+      return;
+    }
+
+    document.getElementById('mlyLoadingText').textContent = 'Открываем панораму...';
+    await initMapillaryViewer(imgId);
+    document.getElementById('mlyLoading').classList.add('hidden');
+  } catch(e){
+    console.error('World round error:', e);
+    document.getElementById('mlyLoadingText').textContent = 'Ошибка загрузки. Пробуем другое место...';
+    setTimeout(()=>loadWorldRound(), 2000);
+  }
+}
+
+function restockWorldPool(){
+  st.locationPool = coopSeed != null
+    ? seededShuffle(WORLD_LOCATIONS, coopSeed)
+    : [...WORLD_LOCATIONS].sort(()=>Math.random()-0.5);
+}
+let st={round:0,totalScore:0,roundScores:[],locations:[],
+  guessCoords:null,guessMarker:null,panoramaPlayer:null,guessMap:null,
+  resultMap:null,panelExpanded:false,locationPool:[]};
+const MAX_R=5,MAX_S=5000,MAX_D=3000;
+
+// ─── YMAPS ─────────────────────────────────────────────────────────────────────
+let ymReady=false;
+ymaps.ready(()=>{
+  ymReady=true;
+  document.getElementById('loadingOverlay').classList.add('hidden');
+  renderDailyStats();startParticles();startBgAnim();
+});
+
+// ─── START ─────────────────────────────────────────────────────────────────────
+function startGame(){
+  if(!ymReady)return;
+  if(gameMode==='coop'){
+    const raw=document.getElementById('coopCode').value.trim().toUpperCase();
+    if(!raw){alert('Введи или создай код сессии!');return;}
+    coopCodeVal=raw;coopSeed=strToSeed(raw);
+    document.getElementById('coopBadge').classList.remove('hidden');
+    document.getElementById('hudCoopCode').textContent=raw;
+  }else{
+    coopSeed=null;coopCodeVal='';
+    document.getElementById('coopBadge').classList.add('hidden');
+  }
+  st.round=0;st.totalScore=0;st.roundScores=[];st.locations=[];
+
+  if(gameMode==='world'){
+    st.locationPool = coopSeed!=null
+      ? seededShuffle(WORLD_LOCATIONS,coopSeed)
+      : [...WORLD_LOCATIONS].sort(()=>Math.random()-0.5);
+  } else {
+    st.locationPool=coopSeed!=null
+      ?seededShuffle(ALL_LOCATIONS,coopSeed)
+      :[...ALL_LOCATIONS].sort(()=>Math.random()-0.5);
+  }
+  hide('startScreen');show('gameScreen');
+  buildPips();loadRound();
+}
+function buildPips(){
+  const el=document.getElementById('roundPips');el.innerHTML='';
+  for(let i=0;i<MAX_R;i++){const p=document.createElement('div');p.className='round-pip';p.id=`pip-${i}`;el.appendChild(p);}
+}
+function updatePips(){
+  for(let i=0;i<MAX_R;i++){
+    const p=document.getElementById(`pip-${i}`);if(!p)continue;
+    p.className='round-pip'+(i<st.round?' done':i===st.round?' active':'');
+  }
+}
+
+// ─── ROUND ─────────────────────────────────────────────────────────────────────
+function loadRound(){
+  st.guessCoords=null;st.guessMarker=null;updatePips();
+  document.getElementById('hudRound').textContent=st.round+1;
+  document.getElementById('hudScore').textContent=st.totalScore.toLocaleString('ru');
+  document.getElementById('guessBtn').disabled=true;
+  const pan=document.getElementById('guessPanel');
+  pan.classList.remove('fullscreen');st.panelExpanded=false;
+  document.getElementById('toggleIcon').textContent='⤢';
+
+  if(gameMode==='world'){
+    // Hide Yandex panorama, show Mapillary
+    document.getElementById('panoramaContainer').style.display='none';
+    document.getElementById('skipNotice').style.display='none';
+    initGuessMap();
+    loadWorldRound();
+  } else {
+    // Hide Mapillary, show Yandex panorama
+    document.getElementById('mapillaryContainer').classList.remove('show');
+    document.getElementById('worldBadge').classList.remove('show');
+    document.getElementById('panoramaContainer').style.display='';
+    initGuessMap();findPano();
+  }
+}
+
+// ─── PANORAMA ──────────────────────────────────────────────────────────────────
+function findPano(){
+  if(!st.locationPool.length)st.locationPool=[...ALL_LOCATIONS].sort(()=>Math.random()-0.5);
+  const cand=st.locationPool.shift();
+  tryPano(cand.c||cand.coords,cand,0);
+}
+const OFF=[[0,0],[0.001,0],[-0.001,0],[0,0.001],[0,-0.001],[0.002,0.002],[-0.002,-0.002],[0.003,0]];
+function tryPano(coords,cand,idx){
+  const[la,lo]=coords,[dl,dlo]=OFF[idx]||[0,0];
+  ymaps.panorama.locate([la+dl,lo+dlo],{layer:'yandex#panorama'}).done(panos=>{
+    if(panos.length>0){
+      const pos=panos[0].getPosition();
+      st.locations[st.round]={coords:[pos[0],pos[1]],label:cand.l||cand.label};
+      document.getElementById('skipNotice').style.display='none';
+      loadPano(panos[0]);
+    }else if(idx+1<OFF.length){tryPano(coords,cand,idx+1);}
+    else{document.getElementById('skipNotice').style.display='block';setTimeout(findPano,80);}
+  },()=>{if(idx+1<OFF.length)tryPano(coords,cand,idx+1);else findPano();});
+}
+function loadPano(pano){
+  if(st.panoramaPlayer){try{st.panoramaPlayer.destroy();}catch(e){}}
+  st.panoramaPlayer=null;
+  document.getElementById('panoramaMap').innerHTML='';
+  try{st.panoramaPlayer=new ymaps.panorama.Player('panoramaMap',pano,{controls:['zoomControl'],suppressMapOpenBlock:true});}
+  catch(e){findPano();}
+}
+function initGuessMap(){
+  if(st.guessMap){try{st.guessMap.destroy();}catch(e){}}
+  const center = gameMode==='world' ? [20,10] : [62,95];
+  const zoom   = gameMode==='world' ? 1 : 2;
+  st.guessMap=new ymaps.Map('guessMap',{center,zoom,controls:['zoomControl'],type:'yandex#map'});
+  st.guessMap.events.add('click',e=>placeMarker(e.get('coords')));
+}
+function placeMarker(c){
+  if(st.guessMarker)st.guessMap.geoObjects.remove(st.guessMarker);
+  st.guessCoords=c;
+  st.guessMarker=new ymaps.Placemark(c,{},{preset:'islands#redCircleDotIcon'});
+  st.guessMap.geoObjects.add(st.guessMarker);
+  document.getElementById('guessBtn').disabled=false;
+}
+
+// ─── SUBMIT ────────────────────────────────────────────────────────────────────
+function submitGuess(){
+  if(!st.guessCoords)return;
+  const actual=st.locations[st.round].coords,guess=st.guessCoords;
+  const dist=haversine(actual,guess),score=calcScore(dist);
+  st.roundScores.push(score);st.totalScore+=score;
+  showResult(actual,guess,dist,score);
+}
+function haversine([a,b],[c,d]){
+  const R=6371,dL=rad(c-a),dl=rad(d-b);
+  const x=Math.sin(dL/2)**2+Math.cos(rad(a))*Math.cos(rad(c))*Math.sin(dl/2)**2;
+  return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
+}
+function rad(d){return d*Math.PI/180;}
+function calcScore(km){
+  const maxD = gameMode==='world' ? 10000 : MAX_D;
+  if(km>=maxD)return 0;
+  return Math.round(MAX_S*Math.pow(1-km/maxD,2));
+}
+
+// ─── RESULT ────────────────────────────────────────────────────────────────────
+function showResult(actual,guess,dist,score){
+  show('resultScreen');
+  document.getElementById('resultRoundLabel').textContent=`РАУНД ${st.round+1}`;
+  document.getElementById('resultScore').textContent=score.toLocaleString('ru');
+  document.getElementById('resultDist').textContent=fmtD(dist);
+  document.getElementById('resultLocName').textContent=st.locations[st.round].label;
+  document.getElementById('totalScoreDisplay').textContent=st.totalScore.toLocaleString('ru');
+  document.getElementById('scoreBarFill').style.width=`${(st.totalScore/(MAX_S*MAX_R))*100}%`;
+  document.getElementById('nextBtn').textContent=st.round+1>=MAX_R?'ИТОГИ →':'СЛЕДУЮЩИЙ РАУНД →';
+  document.getElementById('roundScoresList').innerHTML=st.roundScores.map((s,i)=>
+    `<div class="rnd-chip${i===st.round?' cur':''}">Р${i+1}: ${s.toLocaleString('ru')}</div>`).join('');
+  if(st.resultMap){try{st.resultMap.destroy();}catch(e){}}
+  const mid=[(actual[0]+guess[0])/2,(actual[1]+guess[1])/2];
+  st.resultMap=new ymaps.Map('resultMap',{center:mid,zoom:calcZoom(dist),type:'yandex#map',controls:['zoomControl']});
+  st.resultMap.geoObjects.add(new ymaps.Placemark(actual,{balloonContent:`📍 ${st.locations[st.round].label}`},{preset:'islands#greenCircleDotIcon'}));
+  st.resultMap.geoObjects.add(new ymaps.Placemark(guess,{balloonContent:'🎯 Твоя догадка'},{preset:'islands#redCircleDotIcon'}));
+  st.resultMap.geoObjects.add(new ymaps.Polyline([actual,guess],{},{strokeColor:'#e8ff00',strokeWidth:2,strokeStyle:'dash',strokeOpacity:0.8}));
+}
+function calcZoom(d){if(d<5)return 12;if(d<30)return 9;if(d<100)return 7;if(d<500)return 5;if(d<2000)return 4;return 3;}
+function fmtD(km){if(km<1)return`${Math.round(km*1000)} м`;if(km<100)return`${km.toFixed(1)} км`;return`${Math.round(km)} км`;}
+
+// ─── NEXT ──────────────────────────────────────────────────────────────────────
+function nextRound(){
+  st.round++;hide('resultScreen');
+  if(st.round>=MAX_R){showFinal();return;}
+  loadRound();
+}
+
+// ─── FINAL ─────────────────────────────────────────────────────────────────────
+function showFinal(){
+  show('finalScreen');hide('gameScreen');
+  // Clean up world viewer if active
+  if(gameMode==='world'&&mlyViewer){ try{ mlyViewer.remove(); }catch(e){} mlyViewer=null; }
+
+  const total=st.totalScore;
+  document.getElementById('finalScore').textContent=total.toLocaleString('ru');
+  const pct=total/(MAX_S*MAX_R);
+  const grade=pct>=0.9?'🏆 Легендарный навигатор!':pct>=0.7?'🌟 Отличный результат!':pct>=0.5?'👍 Неплохо!':pct>=0.3?'🗺️ Путешествуй больше!':'😅 Компас — не твой конёк';
+  const modeLabel = gameMode==='world' ? ' · 🌐 Весь мир' : '';
+  document.getElementById('finalGrade').textContent=grade+modeLabel;
+  document.getElementById('finalBreakdown').innerHTML=st.roundScores.map((s,i)=>
+    `<div class="breakdown-item"><div class="breakdown-round">Р${i+1}</div><div class="breakdown-score">${s.toLocaleString('ru')}</div></div>`).join('');
+  const isNew=updateDailyRecord(total);
+  document.getElementById('newRecordBadge').classList.toggle('show',isNew);
+
+  // Friend score box for coop mode
+  const fsb=document.getElementById('friendScoreBox');
+  if(gameMode==='coop'||gameMode==='world'){
+    fsb.classList.add('show');
+    document.getElementById('fscMe').textContent=total.toLocaleString('ru');
+    document.getElementById('fscFriend').textContent='Введи счёт';
+    document.getElementById('fscFriend').className='fsc-val friend pending';
+    document.getElementById('friendBreakdown').innerHTML='';
+    document.getElementById('winnerBadgeWrap').innerHTML='';
+    document.getElementById('friendInputRow').style.display='flex';
+    document.getElementById('friendScoreInput').value='';
+  }else{
+    fsb.classList.remove('show');
+  }
+
+  if(tg)tg.sendData(JSON.stringify({score:total,rounds:st.roundScores,mode:gameMode}));
+}
+
+function submitFriendScore(){
+  const raw=parseInt(document.getElementById('friendScoreInput').value)||0;
+  const friendScore=Math.max(0,Math.min(25000,raw));
+  const myScore=st.totalScore;
+  document.getElementById('fscFriend').textContent=friendScore.toLocaleString('ru');
+  document.getElementById('fscFriend').className='fsc-val friend';
+
+  // Per-round simulated breakdown (we only have their total, distribute evenly for visual)
+  const avgPer=Math.round(friendScore/MAX_R);
+  document.getElementById('friendBreakdown').innerHTML=
+    Array.from({length:MAX_R},(_,i)=>`<div class="fb-chip">Р${i+1}: ~${avgPer.toLocaleString('ru')}</div>`).join('');
+
+  // Winner badge
+  let badgeText,badgeClass;
+  if(myScore>friendScore){badgeText='🏆 ТЫ ПОБЕДИЛ!';badgeClass='win';}
+  else if(myScore<friendScore){badgeText='😤 ДРУГ ПОБЕДИЛ';badgeClass='lose';}
+  else{badgeText='🤝 НИЧЬЯ!';badgeClass='draw';}
+  document.getElementById('winnerBadgeWrap').innerHTML=
+    `<div class="winner-badge ${badgeClass}">${badgeText}</div>`;
+
+  // Hide input
+  document.getElementById('friendInputRow').style.display='none';
+}
+
+function restartGame(){
+  // Clean up Mapillary viewer if active
+  if(mlyViewer){ try{ mlyViewer.remove(); }catch(e){} mlyViewer=null; }
+  document.getElementById('mapillaryContainer').classList.remove('show');
+  document.getElementById('worldBadge').classList.remove('show');
+  document.getElementById('panoramaContainer').style.display='';
+  hide('finalScreen');renderDailyStats();show('startScreen');
+}
+
+// ─── TOGGLE PANEL ──────────────────────────────────────────────────────────────
+function togglePanel(){
+  st.panelExpanded=!st.panelExpanded;
+  const p=document.getElementById('guessPanel');
+  p.classList.toggle('fullscreen',st.panelExpanded);
+  document.getElementById('toggleIcon').textContent=st.panelExpanded?'✕':'⤢';
+  if(st.panelExpanded){
+    setTimeout(()=>{try{st.guessMap?.container.fitToViewport();}catch(e){}},400);
+  }
+}
+
+function show(id){document.getElementById(id).classList.remove('hidden');}
+function hide(id){document.getElementById(id).classList.add('hidden');}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ─── PARTICLES ───────────────────────────────────────────────────────────────
+function startParticles(){
+  const sc=document.getElementById('startScreen');
+  const cols=['#e8ff00','#00d4ff','#ffffff','rgba(232,255,0,0.5)','rgba(0,212,255,0.5)'];
+  for(let i=0;i<20;i++){
+    const p=document.createElement('div');p.className='particle';
+    const sz=Math.random()*4+1.5;
+    p.style.cssText=`width:${sz}px;height:${sz}px;left:${Math.random()*100}%;
+      top:${92+Math.random()*8}%;background:${cols[Math.floor(Math.random()*cols.length)]};
+      animation-duration:${7+Math.random()*9}s;animation-delay:${Math.random()*7}s;opacity:0;`;
+    sc.appendChild(p);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ─── SHARED GLOBE RENDERER ───────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+const LANDS=[
+  [[0,50],[10,54],[20,55],[30,59],[40,65],[50,68],[60,68],[70,66],[80,67],[90,65],
+   [100,60],[110,55],[120,50],[130,47],[140,45],[150,44],[140,38],[130,35],[120,30],
+   [110,22],[100,15],[90,15],[80,20],[70,22],[60,25],[50,25],[40,36],[30,40],[20,40],[10,45],[0,50]],
+  [[0,10],[-5,5],[-10,-5],[0,-20],[10,-35],[20,-38],[30,-35],[40,-25],[45,-10],[42,5],
+   [40,15],[35,22],[30,30],[25,35],[20,37],[15,15],[10,5],[0,10]],
+  [[-65,45],[-70,50],[-75,55],[-80,60],[-85,65],[-90,60],[-95,55],[-100,50],[-110,50],
+   [-120,50],[-130,55],[-140,60],[-150,60],[-160,58],[-165,55],[-160,50],[-150,45],
+   [-140,40],[-130,35],[-120,30],[-110,25],[-100,20],[-90,20],[-80,25],[-75,35],[-70,40],[-65,45]],
+  [[-35,-5],[-40,-10],[-45,-23],[-48,-28],[-52,-33],[-58,-38],[-65,-42],[-68,-50],
+   [-70,-55],[-65,-55],[-60,-50],[-55,-45],[-50,-30],[-45,-25],[-40,-18],[-38,-12],[-35,-5]],
+  [[115,-22],[120,-18],[125,-15],[130,-12],[135,-15],[140,-18],[145,-22],[148,-27],
+   [150,-30],[148,-35],[145,-38],[140,-38],[135,-35],[130,-32],[125,-30],[120,-28],[115,-25],[115,-22]],
+  [[-55,65],[-45,65],[-40,70],[-35,75],[-40,80],[-50,83],[-60,82],[-65,78],[-68,72],[-65,68],[-60,65],[-55,65]],
+  [[95,5],[100,10],[105,5],[110,0],[115,-5],[110,-10],[105,-5],[100,-3],[95,5]],// SE Asia
+  [[125,0],[130,5],[135,0],[130,-5],[125,0]],// Indonesia
+];
+const CITIES=[
+  [37.6,55.75,'Москва'],[30.3,59.95,'СПб'],[60.6,56.84,'Екб'],[82.9,55.03,'НСК'],
+  [49.1,55.8,'Казань'],[131.9,43.12,'Влад'],[39.7,43.6,'Сочи'],[44.8,41.7,'Тбилиси'],
+  [49.87,40.41,'Баку'],[76.9,43.25,'Алматы'],[69.24,41.3,'Ташкент'],[24.1,59.44,'Таллин'],
+  [25.3,54.69,'Вильнюс'],[24.1,56.95,'Рига'],[27.6,53.9,'Минск'],[30.5,50.45,'Киев'],
+  [66.96,39.65,'Самарканд'],[104.3,52.3,'Иркутск'],[71.45,51.17,'Нур-Султан'],[44.2,40.18,'Гарни'],
+];
+
+function ll3d(lon,lat){
+  const phi=(90-lat)*Math.PI/180,theta=(lon+180)*Math.PI/180;
+  return{x:-Math.sin(phi)*Math.cos(theta),y:Math.cos(phi),z:Math.sin(phi)*Math.sin(theta)};
+}
+function rot3d(p,ry,rx){
+  const cy2=Math.cos(ry),sy=Math.sin(ry);
+  const x=p.x*cy2+p.z*sy,z=-p.x*sy+p.z*cy2,y=p.y;
+  const cx2=Math.cos(rx),sx=Math.sin(rx);
+  return{x,y:y*cx2-z*sx,z:y*sx+z*cx2};
+}
+
+function drawGlobe(ctx,cx,cy,R,ry,rx,t,opts={}){
+  const {
+    oceanA='#071525', oceanB='#030a10',
+    contFill='rgba(232,255,0,0.09)', contStroke='rgba(232,255,0,0.38)', contLW=1.2,
+    gridStroke='rgba(0,90,150,0.28)', gridLW=0.45,
+    atmInner='rgba(0,212,255,0.04)', atmOuter='rgba(0,180,255,0.26)',
+    specAlpha=0.09,
+    aura=true,
+  }=opts;
+
+  // Outer aura
+  if(aura){
+    const au=ctx.createRadialGradient(cx,cy,R*0.15,cx,cy,R*2.4);
+    au.addColorStop(0,'rgba(0,212,255,0.08)');
+    au.addColorStop(0.25,'rgba(100,200,255,0.04)');
+    au.addColorStop(0.5,'rgba(232,255,0,0.025)');
+    au.addColorStop(1,'transparent');
+    ctx.beginPath();ctx.arc(cx,cy,R*2.4,0,Math.PI*2);ctx.fillStyle=au;ctx.fill();
+  }
+
+  // Ocean sphere with 3D shading
+  const oG=ctx.createRadialGradient(cx-R*0.32,cy-R*0.28,0,cx,cy,R);
+  oG.addColorStop(0,'#122136');oG.addColorStop(0.35,oceanA);
+  oG.addColorStop(0.75,oceanB);oG.addColorStop(1,'#010507');
+  ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.fillStyle=oG;ctx.fill();
+
+  // Deep glow from below
+  const dg=ctx.createRadialGradient(cx,cy+R*0.6,0,cx,cy+R*0.6,R*0.9);
+  dg.addColorStop(0,'rgba(0,180,255,0.06)');dg.addColorStop(1,'transparent');
+  ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.fillStyle=dg;ctx.fill();
+
+  // Clip for grid + continents
+  ctx.save();ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.clip();
+
+  // Longitude grid
+  for(let lo=-180;lo<180;lo+=20){
+    ctx.beginPath();let f=true;
+    for(let la=-90;la<=90;la+=3){
+      const p=rot3d(ll3d(lo,la),ry,rx);if(p.z<-0.05){f=true;continue;}
+      const sx=cx+p.x*R,sy=cy-p.y*R;
+      f?(ctx.moveTo(sx,sy),f=false):ctx.lineTo(sx,sy);
+    }
+    ctx.strokeStyle=gridStroke;ctx.lineWidth=gridLW;ctx.stroke();
+  }
+  // Latitude grid
+  for(let la=-75;la<=75;la+=15){
+    ctx.beginPath();let f=true;
+    for(let lo=-180;lo<=180;lo+=3){
+      const p=rot3d(ll3d(lo,la),ry,rx);if(p.z<-0.05){f=true;continue;}
+      const sx=cx+p.x*R,sy=cy-p.y*R;
+      f?(ctx.moveTo(sx,sy),f=false):ctx.lineTo(sx,sy);
+    }
+    ctx.strokeStyle=gridStroke;ctx.lineWidth=gridLW;ctx.stroke();
+  }
+  // Equator bold
+  ctx.beginPath();let fe=true;
+  for(let lo=-180;lo<=180;lo+=2){
+    const p=rot3d(ll3d(lo,0),ry,rx);if(p.z<-0.05){fe=true;continue;}
+    const sx=cx+p.x*R,sy=cy-p.y*R;
+    fe?(ctx.moveTo(sx,sy),fe=false):ctx.lineTo(sx,sy);
+  }
+  ctx.strokeStyle='rgba(0,140,200,0.35)';ctx.lineWidth=0.7;ctx.stroke();
+
+  // Continents
+  for(const land of LANDS){
+    ctx.beginPath();let f2=true,pv=false;
+    for(const[lo,la]of land){
+      const p=rot3d(ll3d(lo,la),ry,rx),vis=p.z>-0.1;
+      const sx=cx+p.x*R,sy=cy-p.y*R;
+      if(vis){if(!f2&&pv)ctx.lineTo(sx,sy);else ctx.moveTo(sx,sy);f2=false;}pv=vis;
+    }
+    ctx.closePath();
+    ctx.fillStyle=contFill;ctx.strokeStyle=contStroke;ctx.lineWidth=contLW;
+    ctx.fill();ctx.stroke();
+  }
+
+  // City dots
+  for(const[lo,la,lbl]of CITIES){
+    const p=rot3d(ll3d(lo,la),ry,rx);if(p.z<0.06)continue;
+    const sx=cx+p.x*R,sy=cy-p.y*R,br=p.z;
+    const pulse=(Math.sin(t*0.042+lo*0.07)+1)/2;
+    // Outer ring
+    ctx.beginPath();ctx.arc(sx,sy,2.5+pulse*5,0,Math.PI*2);
+    ctx.strokeStyle=`rgba(0,212,255,${0.1+br*0.2})`;ctx.lineWidth=0.7;ctx.stroke();
+    // Inner dot
+    ctx.beginPath();ctx.arc(sx,sy,2.2,0,Math.PI*2);
+    const dG2=ctx.createRadialGradient(sx-0.5,sy-0.5,0,sx,sy,2.2);
+    dG2.addColorStop(0,`rgba(160,245,255,${0.7+br*0.3})`);
+    dG2.addColorStop(1,`rgba(0,180,255,${0.3+br*0.4})`);
+    ctx.fillStyle=dG2;ctx.fill();
+    // Glow halo
+    const hG=ctx.createRadialGradient(sx,sy,0,sx,sy,9);
+    hG.addColorStop(0,`rgba(0,212,255,${br*0.35})`);hG.addColorStop(1,'transparent');
+    ctx.beginPath();ctx.arc(sx,sy,9,0,Math.PI*2);ctx.fillStyle=hG;ctx.fill();
+    // Label
+    if(br>0.3){
+      ctx.font=`${Math.round(8+br*5)}px 'Manrope', sans-serif`;
+      ctx.fillStyle=`rgba(180,240,255,${br*0.85})`;ctx.fillText(lbl,sx+6,sy-4);
+    }
+  }
+  ctx.restore();
+
+  // Atmosphere rim
+  const atm=ctx.createRadialGradient(cx,cy,R*0.87,cx,cy,R*1.14);
+  atm.addColorStop(0,'transparent');
+  atm.addColorStop(0.5,atmInner);
+  atm.addColorStop(1,atmOuter);
+  ctx.beginPath();ctx.arc(cx,cy,R*1.14,0,Math.PI*2);ctx.fillStyle=atm;ctx.fill();
+
+  // Specular highlight
+  const sp=ctx.createRadialGradient(cx-R*0.4,cy-R*0.38,0,cx-R*0.4,cy-R*0.38,R*0.55);
+  sp.addColorStop(0,`rgba(255,255,255,${specAlpha})`);sp.addColorStop(1,'transparent');
+  ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.fillStyle=sp;ctx.fill();
+
+  // Second specular (sci-fi style)
+  const sp2=ctx.createRadialGradient(cx+R*0.35,cy+R*0.3,0,cx+R*0.35,cy+R*0.3,R*0.45);
+  sp2.addColorStop(0,'rgba(0,180,255,0.04)');sp2.addColorStop(1,'transparent');
+  ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.fillStyle=sp2;ctx.fill();
+}
+
+function drawOrbits(ctx,cx,cy,R,t){
+  const configs=[
+    {tilt:0.32,orR:1.15,col:'rgba(0,212,255,0.18)',dash:[6,9],speed:0.45,satCol:'#00d4ff'},
+    {tilt:0.52,orR:1.22,col:'rgba(232,255,0,0.13)',dash:[4,10],speed:0.28,satCol:'#e8ff00'},
+    {tilt:0.68,orR:1.30,col:'rgba(255,80,180,0.1)',dash:[5,11],speed:0.36,satCol:'#ff80c0'},
+  ];
+  for(let o=0;o<configs.length;o++){
+    const cfg=configs[o];
+    ctx.save();ctx.translate(cx,cy);ctx.rotate(Math.sin(t*(0.003+o*0.001)+o)*0.5);
+    ctx.scale(1,Math.sin(cfg.tilt));
+    ctx.beginPath();ctx.arc(0,0,R*cfg.orR,0,Math.PI*2);
+    ctx.strokeStyle=cfg.col;ctx.lineWidth=0.9;
+    ctx.setLineDash(cfg.dash);ctx.lineDashOffset=-t*cfg.speed;
+    ctx.stroke();ctx.setLineDash([]);ctx.restore();
+
+    // Satellite with glow
+    const ph=t*0.018+o*2.09,sx=cx+Math.cos(ph)*R*cfg.orR,sy=cy+Math.sin(ph)*R*cfg.orR*Math.sin(cfg.tilt);
+    const sg=ctx.createRadialGradient(sx,sy,0,sx,sy,13);
+    sg.addColorStop(0,cfg.satCol+'55');sg.addColorStop(1,'transparent');
+    ctx.beginPath();ctx.arc(sx,sy,13,0,Math.PI*2);ctx.fillStyle=sg;ctx.fill();
+    ctx.beginPath();ctx.arc(sx,sy,3,0,Math.PI*2);ctx.fillStyle=cfg.satCol;ctx.fill();
+    // Trail
+    for(let j=1;j<=16;j++){
+      const pp=ph-j*0.06,px=cx+Math.cos(pp)*R*cfg.orR,py=cy+Math.sin(pp)*R*cfg.orR*Math.sin(cfg.tilt);
+      ctx.beginPath();ctx.arc(px,py,1.5*(1-j/16),0,Math.PI*2);
+      ctx.fillStyle=`rgba(0,212,255,${(1-j/16)*0.22})`;ctx.fill();
+    }
+  }
+}
+
+function drawCursor(ctx,cx,cy,R,t){
+  const ca=t*0.013;
+  const mx=cx+Math.cos(ca)*R*0.82*0.78,my=cy+Math.sin(ca*0.68)*R*0.82*0.52;
+  // Trail
+  const tr=drawCursor._tr||(drawCursor._tr=[]);
+  tr.push({x:mx,y:my,l:1});if(tr.length>60)tr.shift();
+  for(let i=1;i<tr.length;i++){
+    const pt=tr[i],pv=tr[i-1];pt.l=Math.max(0,pt.l-0.02);
+    ctx.beginPath();ctx.moveTo(pv.x,pv.y);ctx.lineTo(pt.x,pt.y);
+    ctx.strokeStyle=`rgba(232,255,0,${pt.l*0.55})`;ctx.lineWidth=1.8;ctx.stroke();
+  }
+  // Pin shadow
+  ctx.beginPath();ctx.ellipse(mx,my+10,4,1.5,0,0,Math.PI*2);
+  ctx.fillStyle='rgba(0,0,0,0.3)';ctx.fill();
+  // Pin body
+  const pinG=ctx.createRadialGradient(mx-1.5,my-1.5,0,mx,my,7);
+  pinG.addColorStop(0,'rgba(255,255,200,1)');pinG.addColorStop(0.4,'rgba(232,255,0,1)');
+  pinG.addColorStop(1,'rgba(180,210,0,1)');
+  ctx.beginPath();ctx.arc(mx,my,6,0,Math.PI*2);ctx.fillStyle=pinG;ctx.fill();
+  ctx.beginPath();ctx.arc(mx,my,6,0,Math.PI*2);
+  ctx.strokeStyle='rgba(100,130,0,0.7)';ctx.lineWidth=1;ctx.stroke();
+  // Crosshair
+  ctx.strokeStyle='rgba(232,255,0,0.65)';ctx.lineWidth=1.4;
+  [[mx-9,my,mx-17,my],[mx+9,my,mx+17,my],[mx,my-9,mx,my-17],[mx,my+9,mx,my+17]].forEach(([x1,y1,x2,y2])=>{
+    ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+  });
+  // Ping rings
+  for(let p=0;p<3;p++){
+    const pr=((t*1.8+p*14)%42),al=Math.max(0,1-pr/42)*0.32;
+    ctx.beginPath();ctx.arc(mx,my,pr,0,Math.PI*2);
+    ctx.strokeStyle=`rgba(232,255,0,${al})`;ctx.lineWidth=1;ctx.stroke();
+  }
+}
+
+function drawStars(ctx,W,H,t,stars){
+  for(const s of stars){
+    const tw=(Math.sin(t*0.022+s.ph)+1)/2;
+    ctx.beginPath();ctx.arc(s.x*W,s.y*H,s.r*tw,0,Math.PI*2);
+    ctx.fillStyle=`rgba(255,255,255,${s.a*tw})`;ctx.fill();
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ─── START SCREEN BG GLOBE ───────────────────────────────────────────────────
+function startBgAnim(){
+  const canvas=document.getElementById('startBg');if(!canvas)return;
+  const ctx=canvas.getContext('2d');
+  let W,H,cx,cy,R,t=0,raf;
+  const stars=Array.from({length:180},()=>({x:Math.random(),y:Math.random(),r:Math.random()*1.5+0.3,a:Math.random()*0.45+0.05,ph:Math.random()*Math.PI*2}));
+
+  function resize(){W=canvas.width=window.innerWidth;H=canvas.height=window.innerHeight;cx=W/2;cy=H*0.38;R=Math.min(W,H)*0.34;}
+  function frame(){
+    t++;
+    ctx.clearRect(0,0,W,H);ctx.fillStyle='#060609';ctx.fillRect(0,0,W,H);
+    drawStars(ctx,W,H,t,stars);
+    const ry=t*0.007,rx=Math.sin(t*0.003)*0.25;
+    drawGlobe(ctx,cx,cy,R,ry,rx,t,{aura:true,contFill:'rgba(232,255,0,0.07)',contStroke:'rgba(232,255,0,0.3)',contLW:1,specAlpha:0.08});
+    drawOrbits(ctx,cx,cy,R,t);
+    drawCursor(ctx,cx,cy,R,t);
+    raf=requestAnimationFrame(frame);
+  }
+  resize();window.addEventListener('resize',resize);frame();
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ─── LOADING GLOBE ─────────────────────────────────────────────────────────────
+(function(){
+  const canvas=document.getElementById('loadingCanvas');
+  const ctx=canvas.getContext('2d');
+  let W,H,cx,cy,R,t=0,on=true,raf;
+  const stars=Array.from({length:230},()=>({x:Math.random(),y:Math.random(),r:Math.random()*1.7+0.3,a:Math.random()*0.5+0.08,ph:Math.random()*Math.PI*2}));
+
+  function resize(){W=canvas.width=window.innerWidth;H=canvas.height=window.innerHeight;cx=W/2;cy=H*0.42;R=Math.min(W,H)*0.4;}
+  function frame(){
+    if(!on)return;t++;
+    ctx.clearRect(0,0,W,H);ctx.fillStyle='#03030a';ctx.fillRect(0,0,W,H);
+    drawStars(ctx,W,H,t,stars);
+    const ry=t*0.009,rx=Math.sin(t*0.0035)*0.3;
+    // Extra deep glow for loading screen
+    const bg=ctx.createRadialGradient(cx,cy,0,cx,cy,R*2.8);
+    bg.addColorStop(0,'rgba(0,60,120,0.12)');bg.addColorStop(0.4,'rgba(0,30,60,0.06)');bg.addColorStop(1,'transparent');
+    ctx.beginPath();ctx.arc(cx,cy,R*2.8,0,Math.PI*2);ctx.fillStyle=bg;ctx.fill();
+
+    drawGlobe(ctx,cx,cy,R,ry,rx,t,{
+      oceanA:'#0a1e30',oceanB:'#040e18',
+      contFill:'rgba(232,255,0,0.11)',contStroke:'rgba(232,255,0,0.45)',contLW:1.4,
+      gridStroke:'rgba(0,100,160,0.3)',gridLW:0.5,
+      atmInner:'rgba(0,212,255,0.06)',atmOuter:'rgba(0,180,255,0.3)',
+      specAlpha:0.11,aura:true
+    });
+    drawOrbits(ctx,cx,cy,R,t);
+    drawCursor(ctx,cx,cy,R,t);
+    raf=requestAnimationFrame(frame);
+  }
+  resize();window.addEventListener('resize',resize);frame();
+  window._stopLoadingAnim=()=>{on=false;cancelAnimationFrame(raf);};
+})();
+</script>
+</body>
+</html>
